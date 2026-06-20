@@ -2,6 +2,14 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
+import { defineConfig } from 'vite'
+import react from '@vitejs/react-react'
+
+export default defineConfig({
+  plugins: [react()],
+  base: 'VedaScan-AI', // ⚠️ Replace this with your exact GitHub repository name
+})
+
 
 export default defineConfig(() => {
   return {
