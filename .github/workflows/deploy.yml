@@ -18,7 +18,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 24 # Explicitly switches target engine to Node 24
 
       - name: Install Dependencies
         run: npm install
@@ -31,5 +31,5 @@ jobs:
       - name: Deploy to GitHub Pages Branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: dist # Vite compiles code into the dist folder
-          branch: gh-pages # This automatically pushes compiled files here
+          folder: dist
+          branch: gh-pages
