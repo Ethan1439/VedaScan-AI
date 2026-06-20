@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://github.io",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
@@ -11,8 +12,9 @@
     "lint": "tsc --noEmit",
     "android:init": "cap init \"VedaScan AI\" com.vedascan.ai --web-dir=dist && cap add android",
     "android:sync": "vite build && cap sync"
-    "homepage": "https://ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app/"
-  },
+  }
+  "predeploy": "npm run build",
+"deploy": "gh-pages -d dist"
   "dependencies": {
     "@capacitor/android": "^8.4.0",
     "@capacitor/core": "^8.4.0",
