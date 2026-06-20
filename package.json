@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit",
     "android:init": "cap init \"VedaScan AI\" com.vedascan.ai --web-dir=dist && cap add android",
     "android:sync": "vite build && cap sync"
+    "homepage": "https://ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app/"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",
