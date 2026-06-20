@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/66bd9376-a6fa-4518-8781-486a2539de15
+View your app in AI Studio: https://ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app/
 
 ## Run Locally
 
