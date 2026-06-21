@@ -9,18 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script>
-      // GitHub Pages trailing slash redirection to avoid relative assets path resolution issues
+      // Automatically redirect GitHub Pages visitors to the live production Cloud Run URL
       (function() {
-        try {
-          if (window.location.hostname.endsWith('github.io')) {
-            const path = window.location.pathname;
-            // If the pathname doesn't end with a slash and does not have a file extension (e.g., .html)
-            if (path && !path.endsWith('/') && !path.split('/').pop().includes('.')) {
-              window.location.replace(window.location.href + '/');
-            }
-          }
-        } catch (e) {
-          console.error('Trailing slash helper error:', e);
+        if (window.location.hostname.endsWith('github.io')) {
+          window.location.replace('https://ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app');
         }
       })();
     </script>
