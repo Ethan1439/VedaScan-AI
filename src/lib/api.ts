@@ -14,7 +14,7 @@ export function getApiUrl(path: string): string {
     
     // If we're on GitHub Pages, or any non-container environment (and we aren't running local dev server)
     if (isGitHubPages || (!isDevContainer && !isLocalServer)) {
-      return `https://ais-pre-pfrwn2nczfegc4w2vtwsug-1005962287178.asia-southeast1.run.app${cleanPath}`;
+      return `https://ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app${cleanPath}`;
     }
   }
 
