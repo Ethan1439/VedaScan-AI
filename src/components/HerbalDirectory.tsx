@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Herb } from "../types";
-import { Search, Compass, ShieldAlert, Heart, Info, X } from "lucide-react";
+import { Search, Compass, ShieldAlert, Heart, Info, X, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface HerbalDirectoryProps {
@@ -12,6 +12,7 @@ export default function HerbalDirectory({ herbs, onSelectHerbKeyword }: HerbalDi
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDosha, setSelectedDosha] = useState<"All" | "Vata" | "Pitta" | "Kapha">("All");
   const [selectedHerb, setSelectedHerb] = useState<Herb | null>(null);
+  const [showDeals, setShowDeals] = useState(false);
 
   // Filter logic
   const filteredHerbs = herbs.filter((herb) => {
@@ -190,7 +191,7 @@ export default function HerbalDirectory({ herbs, onSelectHerbKeyword }: HerbalDi
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedHerb(null)}
+              onClick={() => { setSelectedHerb(null); setShowDeals(false); }}
               className="absolute inset-0 bg-black/75 backdrop-blur-md"
             />
 
@@ -206,7 +207,7 @@ export default function HerbalDirectory({ herbs, onSelectHerbKeyword }: HerbalDi
               <div className="bg-gradient-to-br from-[#131A16] to-[#080A09] p-6 border-b border-white/5 relative">
                 <button
                   id="close-herb-modal"
-                  onClick={() => setSelectedHerb(null)}
+                  onClick={() => { setSelectedHerb(null); setShowDeals(false); }}
                   className="absolute right-4 top-4 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 p-1.5 rounded-full transition cursor-pointer"
                 >
                   <X className="w-4 h-4" />
@@ -271,20 +272,33 @@ export default function HerbalDirectory({ herbs, onSelectHerbKeyword }: HerbalDi
               </div>
 
               {/* Modal Footer */}
-              <div className="px-6 py-4 bg-[#111613] border-t border-white/5 flex justify-between items-center text-xs">
-                <span className="text-white/40 italic">Holistic herbal profile</span>
-                <button
-                  id="modal-select-herb"
-                  onClick={() => {
-                    if (onSelectHerbKeyword) {
-                      onSelectHerbKeyword(selectedHerb.name);
-                    }
-                    setSelectedHerb(null);
-                  }}
-                  className="bg-[#C5A36B] text-black font-semibold px-4 py-2 rounded-xl hover:bg-[#C5A36B]/80 transition cursor-pointer"
-                >
-                  Select & Ask Vaidya
-                </button>
+              <div className="px-6 py-4 bg-[#111613] border-t border-white/5 flex flex-col sm:flex-row gap-3 justify-between items-center text-xs">
+                <span className="text-white/40 italic hidden sm:inline">Holistic herbal profile</span>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-center">
+                  <div className="w-full sm:w-auto">
+                    <a
+                      href={`https://linkredirect.in/visitretailer/2318?id=5388051&shareid=88qOeli&dl=${encodeURIComponent(`https://www.flipkart.com/search?q=${encodeURIComponent("planet ayurveda " + selectedHerb.name.replace(/\(.*?\)/g, "").trim())}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:w-auto bg-black/30 hover:bg-[#C5A36B]/15 text-[#C5A36B] border border-[#C5A36B]/40 font-semibold px-4 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 text-center text-xs whitespace-nowrap"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" /> Buy on Flipkart
+                    </a>
+                  </div>
+                  <button
+                    id="modal-select-herb"
+                    onClick={() => {
+                      if (onSelectHerbKeyword) {
+                        onSelectHerbKeyword(selectedHerb.name);
+                      }
+                      setSelectedHerb(null);
+                      setShowDeals(false);
+                    }}
+                    className="bg-[#C5A36B] text-black font-semibold px-4 py-2 rounded-xl hover:bg-[#C5A36B]/80 transition cursor-pointer whitespace-nowrap w-full sm:w-auto mt-2 sm:mt-0"
+                  >
+                    Select & Ask Vaidya
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

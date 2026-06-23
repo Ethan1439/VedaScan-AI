@@ -1,19 +1,39 @@
 <!doctype html>
 <html lang="en" class="h-full">
   <head>
-    <meta name="google-site-verification" content="Z0yPkanyj42ZxUM6-ieuH5xA-DEcxOETyiXV7sgi2Oc" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VedaScan AI - Immersive Ayurvedic Herbal Medicine recommender</title>
+    <!-- Google Search Console Verification Meta Tag -->
+    <!-- Replace content="YOUR_GOOGLE_VERIFICATION_CODE_HERE" with your actual Google Search Console verification code -->
+    <meta name="google-site-verification" content="lF3K_kyH0X3bw7CQOLXRZUtFyJIJS9iQjH0ShL8Ke3s" />
+    
     <!-- Beautiful sans-serif and serif fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script>
-      // Automatically redirect GitHub Pages visitors to the live production Cloud Run URL
+      // Automatically redirect GitHub Pages visitors to the live production Cloud Run URL,
+      // but bypass the redirect if the user is a search engine crawler (Googlebot, Search Console Verification, Bing, etc.)
+      // or if they append '?noredirect=true' or are trying to perform verification.
       (function() {
-        if (window.location.hostname.endsWith('github.io')) {
-          window.location.replace('https://ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app');
+        try {
+          if (window.location.hostname.endsWith('github.io')) {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Check if the system is being crawled by Googlebot, Search Console verification bots, or other search crawlers
+            const isBot = /googlebot|google-site-verification|adsbot|mediapartners-google|chrome-lighthouse|bingbot|yandex|baidu|duckduck|slurp|crawler|spider/.test(userAgent);
+            const hasBypassParam = urlParams.has('noredirect') || urlParams.has('google-site-verification');
+            
+            if (!isBot && !hasBypassParam) {
+              window.location.replace('https://ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app');
+            } else {
+              console.log('Search crawler or bypass parameter detected. Staying on GitHub Pages for indexing and verification.');
+            }
+          }
+        } catch (e) {
+          console.error('Redirect helper error:', e);
         }
       })();
     </script>

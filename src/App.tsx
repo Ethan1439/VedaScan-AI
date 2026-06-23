@@ -16,7 +16,9 @@ import {
   Grid,
   History,
   Trash2,
-  CalendarPlus
+  CalendarPlus,
+  ShoppingBag,
+  X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Herb, DoshaAnswers, RecommendationResponse, SavedConsultation } from "./types";
@@ -103,6 +105,8 @@ const FALLBACK_HERBS: Herb[] = [
 export default function App() {
   // State elements
   const [herbs, setHerbs] = useState<Herb[]>([]);
+  const [selectedMedicine, setSelectedMedicine] = useState<{ name: string; dosageInstructions: string; safetyNotes: string } | null>(null);
+  const [showMedicineDeals, setShowMedicineDeals] = useState(false);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [customDescription, setCustomDescription] = useState("");
   const [diseaseContext, setDiseaseContext] = useState("");
@@ -906,13 +910,21 @@ export default function App() {
                         {recommendationResult.medicines.map((med, index) => (
                           <div
                             key={index}
-                            className="bg-black/45 p-5 rounded-2xl border border-white/5 hover:border-[#C5A36B]/35 transition-all duration-300 flex flex-col justify-between"
+                            onClick={() => {
+                              setSelectedMedicine({
+                                name: med.name,
+                                dosageInstructions: med.dosageInstructions,
+                                safetyNotes: med.safetyNotes
+                              });
+                              setShowMedicineDeals(false);
+                            }}
+                            className="bg-black/45 p-5 rounded-2xl border border-white/5 hover:border-[#C5A36B]/35 transition-all duration-300 flex flex-col justify-between cursor-pointer group"
                           >
                             <div className="space-y-2">
                               <span className="text-[9px] font-bold bg-[#C5A36B]/15 text-[#C5A36B] border border-[#C5A36B]/20 px-2 py-0.5 rounded">
                                 {med.type}
                               </span>
-                              <h4 className="text-base font-serif text-[#F2EBE4] font-bold">
+                              <h4 className="text-base font-serif text-[#F2EBE4] font-bold group-hover:text-[#C5A36B] transition-colors">
                                 {med.name}
                               </h4>
                               <p className="text-[10px] text-white/40 italic">
@@ -923,16 +935,12 @@ export default function App() {
                               </p>
                             </div>
 
-                            <div className="mt-4 pt-3 border-t border-white/5 space-y-1.5">
-                              <p className="text-[10px] text-[#C5A36B] font-bold uppercase tracking-wider">
-                                DOSAGE & ANUPANA (CHASSIS):
-                              </p>
-                              <p className="text-[11px] text-[#F2EBE4] italic">
-                                {med.dosageInstructions}
-                              </p>
-                              <p className="text-[10px] text-red-300 bg-red-950/15 p-1.5 rounded border border-red-950/10 mt-1">
-                                Caution: {med.safetyNotes}
-                              </p>
+                            <div className="mt-4 pt-3 border-t border-white/5">
+                              <button
+                                className="w-full bg-[#C5A36B]/10 group-hover:bg-[#C5A36B] text-[#C5A36B] group-hover:text-black border border-[#C5A36B]/30 font-semibold px-2.5 py-2 rounded-xl transition duration-300 flex items-center justify-center gap-1.5 text-xs text-center"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5" /> Buy on Flipkart
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -1207,6 +1215,69 @@ export default function App() {
         title="Ayurvedic Treatment Calendar Sync"
         subtitle="Schedule your custom yoga, breathwork, and wellness guidance into dynamic daily dynamic recurring reminders."
       />
+
+      {/* Recommended Medicine Purchase Modal */}
+      <AnimatePresence>
+        {selectedMedicine && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setSelectedMedicine(null); setShowMedicineDeals(false); }}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="relative w-full max-w-md bg-[#0F1310] border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-10 p-6 flex flex-col gap-4"
+            >
+              <button
+                onClick={() => { setSelectedMedicine(null); setShowMedicineDeals(false); }}
+                className="absolute right-4 top-4 text-white/65 hover:text-white bg-white/5 hover:bg-white/10 p-1.5 rounded-full transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              
+              <div className="mt-2">
+                <span className="text-[9px] font-mono tracking-widest text-[#C5A36B] font-bold uppercase block mb-1">
+                  RECOMMENDED REMEDY PROFILE
+                </span>
+                <h4 className="text-xl font-serif text-[#F2EBE4] font-bold">{selectedMedicine.name}</h4>
+              </div>
+
+              <div className="bg-[#080A09] p-3.5 rounded-xl border border-white/5 space-y-2.5">
+                <div>
+                  <span className="text-[9px] font-mono text-[#C5A36B] tracking-wider uppercase block">
+                    DOSAGE & ANUPANA (VEHICLE)
+                  </span>
+                  <p className="text-xs text-[#E0D8D0]/90 italic leading-relaxed">{selectedMedicine.dosageInstructions}</p>
+                </div>
+                
+                <div className="bg-red-950/15 border border-red-900/10 p-2.5 rounded-lg">
+                  <span className="text-[9px] font-mono text-red-400 tracking-wider uppercase block font-bold">
+                    CAUTION & CONTRAINDICATIONS
+                  </span>
+                  <p className="text-[11px] text-red-200/80 leading-relaxed">{selectedMedicine.safetyNotes}</p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-white/5 flex flex-col gap-2.5">
+                <a
+                  href={`https://linkredirect.in/visitretailer/2318?id=5388051&shareid=88qOeli&dl=${encodeURIComponent(`https://www.flipkart.com/search?q=${encodeURIComponent("planet ayurveda " + selectedMedicine.name.replace(/\(.*?\)/g, "").trim())}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-semibold py-2.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 text-xs text-center"
+                >
+                  <ShoppingBag className="w-4 h-4" /> Buy on Flipkart
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

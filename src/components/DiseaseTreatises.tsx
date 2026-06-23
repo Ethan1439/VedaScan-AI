@@ -10,7 +10,9 @@ import {
   Sparkles, 
   Search, 
   ChevronRight, 
-  ChevronDown 
+  ChevronDown,
+  ShoppingBag,
+  X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -22,6 +24,8 @@ interface DiseaseTreatisesProps {
 export default function DiseaseTreatises({ diseases, onApplyDiseaseToForm }: DiseaseTreatisesProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDiseaseId, setSelectedDiseaseId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{ name: string; info: string; type: 'herb' | 'formulation' } | null>(null);
+  const [showProductDeals, setShowProductDeals] = useState(false);
 
   const filteredDiseases = diseases.filter((d) =>
     d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -184,11 +188,23 @@ export default function DiseaseTreatises({ diseases, onApplyDiseaseToForm }: Dis
                         <h5 className="text-[10px] font-bold tracking-widest text-[#C5A36B] uppercase flex items-center gap-1.5">
                           <Leaf className="w-3.5 h-3.5" /> Core Ayurvedic Herbs
                         </h5>
-                        <ul className="space-y-2">
+                        <ul className="space-y-2.5">
                           {selectedItem.primaryHerbs.map((ph, idx) => (
-                            <li key={idx} className="text-xs">
-                              <span className="font-serif text-[#F2EBE4] font-bold block">{ph.name}</span>
-                              <span className="text-[#E0D8D0]/65 text-[11px] leading-snug block mt-0.5">{ph.action}</span>
+                            <li 
+                              key={idx} 
+                              onClick={() => {
+                                setSelectedProduct({ name: ph.name, info: ph.action, type: 'herb' });
+                                setShowProductDeals(false);
+                              }}
+                              className="text-xs group/item bg-black/20 p-2.5 rounded-lg border border-white/[0.03] hover:bg-white/[0.03] hover:border-[#C5A36B]/20 transition duration-200 cursor-pointer flex flex-col justify-between"
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <span className="font-serif text-[#F2EBE4] font-bold block group-hover/item:text-[#C5A36B] transition-colors">{ph.name}</span>
+                                <span className="text-[9px] text-[#C5A36B]/60 group-hover/item:text-[#C5A36B] border border-[#C5A36B]/20 group-hover/item:border-[#C5A36B]/40 px-1.5 py-0.5 rounded transition duration-200 uppercase font-mono tracking-wider flex items-center gap-1">
+                                  <ShoppingBag className="w-2.5 h-2.5" /> View
+                                </span>
+                              </div>
+                              <span className="text-[#E0D8D0]/65 text-[11px] leading-snug block mt-1">{ph.action}</span>
                             </li>
                           ))}
                         </ul>
@@ -199,11 +215,23 @@ export default function DiseaseTreatises({ diseases, onApplyDiseaseToForm }: Dis
                         <h5 className="text-[10px] font-bold tracking-widest text-[#C5A36B] uppercase flex items-center gap-1.5">
                           <Activity className="w-3.5 h-3.5" /> Classical Sastric Remedies
                         </h5>
-                        <ul className="space-y-2">
+                        <ul className="space-y-2.5">
                           {selectedItem.classicalFormulations.map((cf, idx) => (
-                            <li key={idx} className="text-xs">
-                              <span className="font-serif text-[#F2EBE4] font-bold block">{cf.name}</span>
-                              <span className="text-[#C5A36B] text-[10px] leading-snug block mt-0.5">Administer: {cf.administration}</span>
+                            <li 
+                              key={idx} 
+                              onClick={() => {
+                                setSelectedProduct({ name: cf.name, info: `Administration: ${cf.administration}`, type: 'formulation' });
+                                setShowProductDeals(false);
+                              }}
+                              className="text-xs group/item bg-black/20 p-2.5 rounded-lg border border-white/[0.03] hover:bg-white/[0.03] hover:border-[#C5A36B]/20 transition duration-200 cursor-pointer flex flex-col justify-between"
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <span className="font-serif text-[#F2EBE4] font-bold block group-hover/item:text-[#C5A36B] transition-colors">{cf.name}</span>
+                                <span className="text-[9px] text-[#C5A36B]/60 group-hover/item:text-[#C5A36B] border border-[#C5A36B]/20 group-hover/item:border-[#C5A36B]/40 px-1.5 py-0.5 rounded transition duration-200 uppercase font-mono tracking-wider flex items-center gap-1">
+                                  <ShoppingBag className="w-2.5 h-2.5" /> View
+                                </span>
+                              </div>
+                              <span className="text-[#C5A36B] text-[10px] leading-snug block mt-1">Administer: {cf.administration}</span>
                             </li>
                           ))}
                         </ul>
@@ -286,6 +314,59 @@ export default function DiseaseTreatises({ diseases, onApplyDiseaseToForm }: Dis
 
       </div>
 
+      {/* Product Quick View / Purchase Modal */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setSelectedProduct(null); setShowProductDeals(false); }}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="relative w-full max-w-md bg-[#0F1310] border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-10 p-6 flex flex-col gap-4"
+            >
+              <button
+                onClick={() => { setSelectedProduct(null); setShowProductDeals(false); }}
+                className="absolute right-4 top-4 text-white/65 hover:text-white bg-white/5 hover:bg-white/10 p-1.5 rounded-full transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              
+              <div className="mt-2">
+                <span className="text-[9px] font-mono tracking-widest text-[#C5A36B] font-bold uppercase block mb-1">
+                  {selectedProduct.type === 'herb' ? 'CORE AYURVEDIC HERB' : 'CLASSICAL SASTRIC REMEDY'}
+                </span>
+                <h4 className="text-xl font-serif text-[#F2EBE4] font-bold">{selectedProduct.name}</h4>
+              </div>
+
+              <div className="space-y-1 bg-[#080A09] p-3.5 rounded-xl border border-white/5">
+                <span className="text-[9px] font-mono text-[#C5A36B] tracking-wider uppercase block">
+                  {selectedProduct.type === 'herb' ? 'THERAPEUTIC ACTION' : 'ADMINISTRATION & DOSAGE'}
+                </span>
+                <p className="text-xs text-[#E0D8D0]/90 leading-relaxed">{selectedProduct.info}</p>
+              </div>
+
+              <div className="pt-2 border-t border-white/5 flex flex-col gap-2.5">
+                <a
+                  href={`https://linkredirect.in/visitretailer/2318?id=5388051&shareid=88qOeli&dl=${encodeURIComponent(`https://www.flipkart.com/search?q=${encodeURIComponent("planet ayurveda " + selectedProduct.name.replace(/\(.*?\)/g, "").trim())}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-semibold py-2.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 text-xs text-center"
+                >
+                  <ShoppingBag className="w-4 h-4" /> Buy on Flipkart
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
