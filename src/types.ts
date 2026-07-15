@@ -59,3 +59,28 @@ export interface SavedConsultation {
   doshaAnswers: DoshaAnswers;
   result: RecommendationResponse;
 }
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  dosha: string;
+  createdAt: string;
+  notes: HealthNote[];
+  weightLogs: WeightLog[];
+  completedWeightLossDays: number[]; // e.g., [1, 2, 5]
+  savedConsultations: SavedConsultation[];
+}
+
+export interface HealthNote {
+  id: string;
+  timestamp: string;
+  title: string;
+  content: string;
+}
+
+export interface WeightLog {
+  id: string;
+  date: string;
+  weight: number;
+}

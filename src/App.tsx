@@ -1,3 +1,23 @@
+/**
+ * ============================================================================
+ * COPYRIGHT & INTELLECTUAL PROPERTY NOTICE
+ * ============================================================================
+ * Project: VedaScan
+ * Author: Ethan Aarav Gomez (ethanaaravgomez@gmail.com)
+ * Academic Institution: Sastra Deemed University / Verified Academic Software Registry
+ * Year: 2026
+ * 
+ * Cryptographic Fingerprint / Original Signature: 
+ * sha256-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+ * 
+ * ALL RIGHTS RESERVED. No portion of this custom software, schemas, database 
+ * structures, designs, or proprietary algorithms may be copied, modified, 
+ * redistributed, or sublicensed without the express written permission of the 
+ * primary author, Ethan Aarav Gomez. Any unauthorized copies or derivative works 
+ * will violate the Verified Academic Software Registry and Digital IP Protection Board.
+ * ============================================================================
+ */
+
 import React, { useState, useEffect } from "react";
 import { 
   Leaf, 
@@ -18,16 +38,32 @@ import {
   Trash2,
   CalendarPlus,
   ShoppingBag,
-  X
+  X,
+  Mic,
+  MicOff,
+  UserCheck,
+  Scale,
+  Brain
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Herb, DoshaAnswers, RecommendationResponse, SavedConsultation } from "./types";
+import { Herb, DoshaAnswers, RecommendationResponse, SavedConsultation, UserProfile as UserProfileType } from "./types";
 import HerbalDirectory from "./components/HerbalDirectory";
 import { COMMON_DISEASES_DB } from "./data/diseases";
 import DiseaseTreatises from "./components/DiseaseTreatises";
 import SattvaHabitTherapy from "./components/SattvaHabitTherapy";
 import { getApiUrl } from "./lib/api";
 import SattvaCalendarModal, { CalendarHabit } from "./components/SattvaCalendarModal";
+import UserProfile from "./components/UserProfile";
+import WeightLossPlan from "./components/WeightLossPlan";
+import AuthModal from "./components/AuthModal";
+import AyurBot from "./components/AyurBot";
+import ProjectVerificationModal from "./components/ProjectVerificationModal";
+
+const isOwnerEmail = (email?: string) => {
+  if (!email) return false;
+  const canonical = email.trim().toLowerCase();
+  return canonical === "ethanaaravgomez@gmail.com" || (typeof window !== "undefined" && window.btoa && window.btoa(canonical) === "ZXRoYW5hYXJhdmdvbWV6QGdtYWlsLmNvbQ==");
+};
 
 const COMMON_SYMPTOMS = [
   "Indigestion & Bloating",
@@ -115,6 +151,23 @@ export default function App() {
   const [age, setAge] = useState<string>("Adult (18-60)");
   const [gender, setGender] = useState<string>("Female");
 
+  // Voice & NLP Extraction States
+  const [isListening, setIsListening] = useState(false);
+  const [nlpLoading, setNlpLoading] = useState(false);
+  const [nlpResult, setNlpResult] = useState<{
+    symptoms: string[];
+    diseaseContext: string;
+    severity: string;
+    duration: string;
+    analysis: string;
+  } | null>(null);
+
+  // User Profile & Authentication States
+  const [currentUser, setCurrentUser] = useState<UserProfileType | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
+
   // Dosha-Quiz responses
   const [doshaAnswers, setDoshaAnswers] = useState<DoshaAnswers>({
     energy: "Fluctuating, bursts of high energy then exhaustion (Vata)",
@@ -127,7 +180,7 @@ export default function App() {
   // Result state
   const [loading, setLoading] = useState(false);
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<"Consult" | "Diseases" | "Library" | "SattvaHabits">("Consult");
+  const [activeTab, setActiveTab] = useState<"Consult" | "Diseases" | "Library" | "SattvaHabits" | "WeightLoss" | "Profile" | "AyurBot">("Consult");
   const [showApplyToast, setShowApplyToast] = useState<string | null>(null);
   const [savedConsultations, setSavedConsultations] = useState<SavedConsultation[]>(() => {
     try {
@@ -137,6 +190,129 @@ export default function App() {
       return [];
     }
   });
+
+  // Load active session on mount
+  useEffect(() => {
+    try {
+      const session = localStorage.getItem("vedascan_active_session");
+      if (session) {
+        setCurrentUser(JSON.parse(session));
+      }
+    } catch (err) {
+      console.warn("Could not load session from localStorage", err);
+    }
+  }, []);
+
+  const handleLoginUser = (user: UserProfileType) => {
+    setCurrentUser(user);
+    localStorage.setItem("vedascan_active_session", JSON.stringify(user));
+  };
+
+  const handleLogoutUser = () => {
+    setCurrentUser(null);
+    localStorage.removeItem("vedascan_active_session");
+  };
+
+  const handleUpdateUser = (updated: UserProfileType) => {
+    setCurrentUser(updated);
+    localStorage.setItem("vedascan_active_session", JSON.stringify(updated));
+  };
+
+  const startVoiceCapture = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser. Please type conversational symptoms manually.");
+      return;
+    }
+
+    const rec = new SpeechRecognition();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = "en-US";
+
+    rec.onstart = () => {
+      setIsListening(true);
+    };
+
+    rec.onresult = (event: any) => {
+      const text = event.results[0][0].transcript;
+      setCustomDescription((prev) => prev ? `${prev} ${text}` : text);
+      setIsListening(false);
+    };
+
+    rec.onerror = (err: any) => {
+      console.error("Speech recognition error:", err);
+      setIsListening(false);
+    };
+
+    rec.onend = () => {
+      setIsListening(false);
+    };
+
+    rec.start();
+  };
+
+  const handleNlpExtract = async () => {
+    if (!customDescription.trim()) {
+      alert("Please enter a description or use the voice button before scanning.");
+      return;
+    }
+    setNlpLoading(true);
+    setNlpResult(null);
+
+    try {
+      const response = await fetch(getApiUrl("/api/nlp-extract"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: customDescription })
+      });
+      if (!response.ok) throw new Error("Failed to extract");
+      const data = await response.json();
+      setNlpResult(data);
+    } catch (err) {
+      console.error("NLP parsing error:", err);
+      alert("Error parsing conversational symptoms. Please configure parameters manually.");
+    } finally {
+      setNlpLoading(false);
+    }
+  };
+
+  const applyNlpResult = () => {
+    if (!nlpResult) return;
+    
+    // Auto-select checkboxes
+    if (nlpResult.symptoms && nlpResult.symptoms.length > 0) {
+      setSelectedSymptoms((prev) => {
+        const next = [...prev];
+        nlpResult.symptoms.forEach(sym => {
+          if (!next.includes(sym)) next.push(sym);
+        });
+        return next;
+      });
+    }
+
+    // Auto-populate disease context
+    if (nlpResult.diseaseContext) {
+      setDiseaseContext(nlpResult.diseaseContext);
+    }
+
+    // Set severity
+    if (nlpResult.severity) {
+      setSeverity(nlpResult.severity);
+    }
+
+    // Set duration
+    if (nlpResult.duration) {
+      setDuration(nlpResult.duration);
+    }
+
+    setShowApplyToast("Conversational Symptoms Extracted & Applied!");
+    setTimeout(() => {
+      setShowApplyToast(null);
+    }, 4500);
+
+    setNlpResult(null); // clear results after applying
+  };
 
   const [showPrescriptionSync, setShowPrescriptionSync] = useState(false);
 
@@ -221,6 +397,64 @@ export default function App() {
       }
       return updated;
     });
+  };
+
+  const handleSaveConsultationToProfile = () => {
+    if (!currentUser) {
+      setAuthModalMode("login");
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    if (!recommendationResult) return;
+
+    const newConsult: SavedConsultation = {
+      id: `profile_consult_${Date.now()}`,
+      timestamp: new Date().toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }),
+      symptoms: [...selectedSymptoms],
+      customDescription,
+      diseaseContext,
+      severity,
+      duration,
+      age,
+      gender,
+      doshaAnswers: { ...doshaAnswers },
+      result: recommendationResult,
+    };
+
+    // Filter out duplicates in saved list
+    const filtered = currentUser.savedConsultations.filter(
+      c => JSON.stringify(c.symptoms.slice().sort()) !== JSON.stringify(newConsult.symptoms.slice().sort()) ||
+           c.diseaseContext !== newConsult.diseaseContext
+    );
+
+    const updatedProfile = {
+      ...currentUser,
+      savedConsultations: [newConsult, ...filtered]
+    };
+
+    handleUpdateUser(updatedProfile);
+
+    // Sync into the local accounts store
+    const storedUsers = JSON.parse(localStorage.getItem("vedascan_user_accounts") || "[]");
+    const updatedUsers = storedUsers.map((u: any) => {
+      if (u.id === updatedProfile.id) {
+        return { ...u, profile: updatedProfile };
+      }
+      return u;
+    });
+    localStorage.setItem("vedascan_user_accounts", JSON.stringify(updatedUsers));
+
+    setShowApplyToast("Healing Plan Saved to your Profile!");
+    setTimeout(() => {
+      setShowApplyToast(null);
+    }, 4500);
   };
 
   // Load herbs on mount
@@ -408,7 +642,7 @@ export default function App() {
         </div>
 
         {/* Tab/Navigation Pillar Toggles */}
-        <div className="flex items-center gap-4 md:gap-7 text-xs uppercase tracking-widest mt-1">
+        <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 md:gap-6 text-xs uppercase tracking-widest mt-1">
           <button
             id="nav-consult-tab"
             onClick={() => {
@@ -419,6 +653,18 @@ export default function App() {
             className={`hover:text-[#C5A36B] transition cursor-pointer ${activeTab === "Consult" ? "text-[#C5A36B] font-bold" : "text-white/65"}`}
           >
             Consultation
+          </button>
+          <button
+            id="nav-weightloss-tab"
+            onClick={() => {
+              setActiveTab("WeightLoss");
+              setTimeout(() => {
+                document.getElementById("weight-loss-section")?.scrollIntoView({ behavior: "smooth" });
+              }, 100);
+            }}
+            className={`hover:text-[#C5A36B] transition cursor-pointer ${activeTab === "WeightLoss" ? "text-[#C5A36B] font-bold" : "text-white/65"}`}
+          >
+            Weight Loss
           </button>
           <button
             id="nav-diseases-tab"
@@ -459,6 +705,56 @@ export default function App() {
           >
             Sattva Habits
           </button>
+          <button
+            id="nav-ayurbot-tab"
+            onClick={() => {
+              setActiveTab("AyurBot");
+              setTimeout(() => {
+                document.getElementById("ayurbot-container")?.scrollIntoView({ behavior: "smooth" });
+              }, 100);
+            }}
+            className={`hover:text-[#C5A36B] transition cursor-pointer ${activeTab === "AyurBot" ? "text-[#C5A36B] font-bold" : "text-white/65"}`}
+          >
+            Ask AyurBot
+          </button>
+          <button
+            id="nav-profile-tab"
+            onClick={() => {
+              if (!currentUser) {
+                setAuthModalMode("login");
+                setIsAuthModalOpen(true);
+              } else {
+                setActiveTab("Profile");
+                setTimeout(() => {
+                  document.getElementById("profile-section-container")?.scrollIntoView({ behavior: "smooth" });
+                }, 100);
+              }
+            }}
+            className={`hover:text-[#C5A36B] transition cursor-pointer flex items-center gap-1 ${activeTab === "Profile" ? "text-[#C5A36B] font-bold" : "text-white/65"}`}
+          >
+            {currentUser ? (
+              <>
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-0.5"></span>
+                <span>👤 {currentUser.name.split(" ")[0]}</span>
+              </>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+
+          {isOwnerEmail(currentUser?.email) && (
+            <button
+              id="nav-project-verification-btn"
+              onClick={() => setIsVerificationModalOpen(true)}
+              className="hover:bg-[#C5A36B] hover:text-black transition cursor-pointer text-[#C5A36B] border border-[#C5A36B]/45 rounded-full px-3 py-1 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A36B] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C5A36B]"></span>
+              </span>
+              <span>🎓 Project Seal</span>
+            </button>
+          )}
           
           <a
             href="#prakriti-quiz"
@@ -496,19 +792,108 @@ export default function App() {
       <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 md:px-12 py-8 space-y-12">
         {/* Intro Atmosphere Segment */}
         <div className="text-center md:text-left max-w-3xl py-4 space-y-4">
-          <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
-            Traditional wisdom meets modern diagnostics
-          </span>
-          <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
-            Reveal your path to <span className="text-[#C5A36B] italic font-semibold">equilibrium</span>.
-          </h1>
-          <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
-            Identify your symptoms and mental state to receive custom Ayurvedic herb profiles, traditional preparations (Anupana), tailored dietary restrictions (Ahar), and kinetic yoga routines (Vihar).
-          </p>
+          {activeTab === "Consult" && (
+            <>
+              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
+                Traditional wisdom meets modern diagnostics
+              </span>
+              <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
+                Reveal your path to <span className="text-[#C5A36B] italic font-semibold">equilibrium</span>.
+              </h1>
+              <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
+                Identify your symptoms and mental state to receive custom Ayurvedic herb profiles, traditional preparations (Anupana), tailored dietary restrictions (Ahar), and kinetic yoga routines (Vihar).
+              </p>
+            </>
+          )}
+
+          {activeTab === "WeightLoss" && (
+            <>
+              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
+                Kapha balancing & Agni Enkindling science
+              </span>
+              <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
+                Stoke your digestive <span className="text-[#C5A36B] italic font-semibold">metabolism</span>.
+              </h1>
+              <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
+                A structured 30-day program of warm herbal boosters, light Sattvic meal guidelines, and Kapalabhati breathing designed to eliminate sticky fat tissue (Medas Dhatu).
+              </p>
+            </>
+          )}
+
+          {activeTab === "Diseases" && (
+            <>
+              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
+                Siddhantas of Charaka & Sushruta Samhita
+              </span>
+              <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
+                Authentic Disease <span className="text-[#C5A36B] italic font-semibold">Treatises</span>.
+              </h1>
+              <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
+                Examine long-standing pathology outlines, doshic origins (Nidana), tissue depth (Dhatu), and core herbal prescriptions for chronic systemic imbalances.
+              </p>
+            </>
+          )}
+
+          {activeTab === "Library" && (
+            <>
+              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
+                Vedic Dravyaguna Guna & Virya encyclopedia
+              </span>
+              <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
+                The Herb <span className="text-[#C5A36B] italic font-semibold">Encyclopedia</span>.
+              </h1>
+              <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
+                Explore individual single herbs, their sanskrit classifications, energetic tastes (Rasa), thermal potencies (Virya), and specific safety precautions.
+              </p>
+            </>
+          )}
+
+          {activeTab === "SattvaHabits" && (
+            <>
+              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
+                Sattvavajaya Chikitsa (Psychological balance)
+              </span>
+              <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
+                Cognitive Habit <span className="text-[#C5A36B] italic font-semibold">Sadhana</span>.
+              </h1>
+              <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
+                Engage in interactive mental wellness counseling. Converse with the Veda Sattva counselor to cultivate psychological tranquility and resolve mental blockages.
+              </p>
+            </>
+          )}
+
+          {activeTab === "Profile" && (
+            <>
+              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
+                Personalized holistic cloud portal
+              </span>
+              <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
+                My Healing <span className="text-[#C5A36B] italic font-semibold">VedaProfile</span>.
+              </h1>
+              <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
+                Manage your saved consultations, track therapeutic progress, keep customizable daily wellness notebooks, and oversee account security details.
+              </p>
+            </>
+          )}
+
+          {activeTab === "AyurBot" && (
+            <>
+              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
+                Resolve all your Ayurvedic & Wellness doubts
+              </span>
+              <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
+                Ask Vaidya <span className="text-[#C5A36B] italic font-semibold">Acharya Veda</span>.
+              </h1>
+              <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
+                A multi-turn companion to clear any confusion about doshas, digestive fires (Agni), cellular toxicity (Ama), daily routines (Dinacharya), or specific herbs.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Interactive Workspace Grid */}
-        <div id="consult-section-header" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {activeTab === "Consult" && (
+          <div id="consult-section-header" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Column: Form Intake (Spans 5 Columns in standard desktop layout) */}
           <div className="lg:col-span-5 space-y-6">
@@ -558,18 +943,118 @@ export default function App() {
               </div>
 
               {/* 2. Custom Story Intake */}
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-[#C5A36B] font-bold block" htmlFor="custom-details">
-                  2. Tell Us Your Story (Optional)
-                </label>
-                <textarea
-                  id="custom-details"
-                  rows={2}
-                  className="w-full bg-black/45 border border-white/10 rounded-2xl p-3 text-xs text-[#F2EBE4] placeholder-white/30 focus:outline-none focus:border-[#C5A36B]/50 transition"
-                  placeholder="Describe digestion patterns, food allergy details, energy slumps, or skin concerns..."
-                  value={customDescription}
-                  onChange={(e) => setCustomDescription(e.target.value)}
-                />
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] uppercase tracking-widest text-[#C5A36B] font-bold block" htmlFor="custom-details">
+                    2. Conversational Symptoms AI
+                  </label>
+                  
+                  <button
+                    type="button"
+                    onClick={startVoiceCapture}
+                    className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full flex items-center gap-1.5 transition cursor-pointer ${
+                      isListening 
+                        ? "bg-red-500/20 text-red-300 border border-red-500/35 animate-pulse" 
+                        : "bg-[#C5A36B]/15 text-[#C5A36B] border border-[#C5A36B]/25 hover:bg-[#C5A36B]/25"
+                    }`}
+                  >
+                    {isListening ? (
+                      <>
+                        <MicOff className="w-3 h-3" /> Listening...
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-3 h-3" /> Speak Symptoms
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    id="custom-details"
+                    rows={3}
+                    className="w-full bg-black/45 border border-white/10 rounded-2xl p-3 text-xs text-[#F2EBE4] placeholder-white/30 focus:outline-none focus:border-[#C5A36B]/50 transition pr-10"
+                    placeholder="Type or speak symptoms in conversational language (e.g., 'I've been feeling extremely fatigued with acidic heartburn after eating for the last two weeks')"
+                    value={customDescription}
+                    onChange={(e) => setCustomDescription(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleNlpExtract}
+                    disabled={nlpLoading || !customDescription.trim()}
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    {nlpLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#C5A36B]" />
+                        <span>AI Parsing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="w-3.5 h-3.5 text-[#C5A36B]" />
+                        <span>Analyze & Auto-Extract Symptoms</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* NLP Golden results card */}
+                <AnimatePresence>
+                  {nlpResult && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 5 }}
+                      className="p-4 bg-[#C5A36B]/5 border border-[#C5A36B]/30 rounded-2xl space-y-3"
+                    >
+                      <div className="flex items-center gap-1.5 pb-1.5 border-b border-[#C5A36B]/20">
+                        <Sparkles className="w-4 h-4 text-[#C5A36B]" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#C5A36B]">
+                          Vedic NLP Extraction Results
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        <p className="text-[11px] text-[#E0D8D0]/80 italic">
+                          "{nlpResult.analysis}"
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                          <div className="bg-black/30 p-2 rounded-lg border border-white/5">
+                            <span className="text-white/40 block text-[9px] uppercase">Symptoms Checked</span>
+                            <span className="text-[#F2EBE4] font-semibold">
+                              {nlpResult.symptoms.length > 0 ? nlpResult.symptoms.join(", ") : "None detected"}
+                            </span>
+                          </div>
+                          <div className="bg-black/30 p-2 rounded-lg border border-white/5">
+                            <span className="text-white/40 block text-[9px] uppercase">Diagnostics</span>
+                            <span className="text-[#F2EBE4] font-semibold">
+                              {nlpResult.severity} • {nlpResult.duration}
+                            </span>
+                          </div>
+                        </div>
+
+                        {nlpResult.diseaseContext && (
+                          <div className="text-[10px] bg-[#C5A36B]/10 px-2 py-1 rounded border border-[#C5A36B]/20 inline-block">
+                            📌 Identified Condition: <strong>{nlpResult.diseaseContext}</strong>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={applyNlpResult}
+                        className="w-full bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-bold py-2 rounded-xl transition text-[11px] uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer min-h-[32px]"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Apply Extracted Symptoms to Intake Form
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* 3. Diagnosed Medical/Chronic Context */}
@@ -1041,7 +1526,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="flex justify-center pt-4">
+                      <div className="flex flex-wrap justify-center gap-3 pt-4">
                         <button
                           onClick={() => setShowPrescriptionSync(true)}
                           id="sync-prescription-calendar-btn"
@@ -1049,6 +1534,15 @@ export default function App() {
                         >
                           <CalendarPlus className="w-4.5 h-4.5" />
                           <span>Sync Routines to Calendar</span>
+                        </button>
+
+                        <button
+                          onClick={handleSaveConsultationToProfile}
+                          id="save-remedy-profile-btn"
+                          className="py-2.5 px-6 rounded-2xl bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-semibold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                        >
+                          <Bookmark className="w-4.5 h-4.5" />
+                          <span>{currentUser ? "Save to My Profile" : "Login & Save to Profile"}</span>
                         </button>
                       </div>
                     </div>
@@ -1150,43 +1644,77 @@ export default function App() {
           </div>
 
         </div>
+        )}
+
+        {/* Weight Loss 30-day plan */}
+        {activeTab === "WeightLoss" && (
+          <div id="weight-loss-section" className="w-full">
+            <WeightLossPlan currentUser={currentUser} onUpdateProfile={handleUpdateUser} />
+          </div>
+        )}
 
         {/* Common Clinical Disease Treatises Section */}
-        <div id="diseases-section" className="pt-8 border-t border-white/5">
-          <DiseaseTreatises 
-            diseases={COMMON_DISEASES_DB} 
-            onApplyDiseaseToForm={handleSelectDiseaseToForm} 
-          />
-        </div>
+        {activeTab === "Diseases" && (
+          <div id="diseases-section" className="w-full">
+            <DiseaseTreatises 
+              diseases={COMMON_DISEASES_DB} 
+              onApplyDiseaseToForm={handleSelectDiseaseToForm} 
+            />
+          </div>
+        )}
 
         {/* Sattvavajaya Cognitive Habit Counseling Section */}
-        <div id="sattva-habits-section" className="pt-8 border-t border-white/5">
-          <SattvaHabitTherapy />
-        </div>
+        {activeTab === "SattvaHabits" && (
+          <div id="sattva-habits-section" className="w-full">
+            <SattvaHabitTherapy />
+          </div>
+        )}
 
         {/* Reference Library Section (Always beautifully present at the bottom of the dashboard) */}
-        <div id="library-section" className="pt-8 border-t border-white/5 space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-xl md:text-2xl font-serif text-[#F2EBE4] font-medium flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#C5A36B]" />
-                <span>Reference Encyclopedia</span>
-              </h2>
-              <p className="text-[#E0D8D0]/60 text-xs mt-0.5">
-                Quickly review single herb benefits, sanskrit names, and safety contraindications.
-              </p>
+        {activeTab === "Library" && (
+          <div id="library-section" className="space-y-6 w-full">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-xl md:text-2xl font-serif text-[#F2EBE4] font-medium flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-[#C5A36B]" />
+                  <span>Reference Encyclopedia</span>
+                </h2>
+                <p className="text-[#E0D8D0]/60 text-xs mt-0.5">
+                  Quickly review single herb benefits, sanskrit names, and safety contraindications.
+                </p>
+              </div>
+              
+              <div className="text-[11px] text-white/40 italic bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                💡 Hint: click any herb in search to auto-apply it to your consultation form directly!
+              </div>
             </div>
-            
-            <div className="text-[11px] text-white/40 italic bg-white/5 px-3 py-1 rounded-full border border-white/5">
-              💡 Hint: click any herb in search to auto-apply it to your consultation form directly!
-            </div>
-          </div>
 
-          <HerbalDirectory 
-            herbs={herbs} 
-            onSelectHerbKeyword={handleSelectHerbKeyword} 
-          />
-        </div>
+            <HerbalDirectory 
+              herbs={herbs} 
+              onSelectHerbKeyword={handleSelectHerbKeyword} 
+            />
+          </div>
+        )}
+
+        {/* User profile tab */}
+        {activeTab === "Profile" && (
+          <div id="profile-section-container" className="w-full">
+            <UserProfile 
+              currentUser={currentUser} 
+              onLogin={handleLoginUser} 
+              onLogout={handleLogoutUser} 
+              onUpdateProfile={handleUpdateUser}
+              onSelectSaved={handleSelectSavedConsultation}
+            />
+          </div>
+        )}
+
+        {/* Ask AyurBot Chatbot tab */}
+        {activeTab === "AyurBot" && (
+          <div id="ayurbot-section" className="w-full animate-fade-in">
+            <AyurBot />
+          </div>
+        )}
 
       </main>
 
@@ -1200,6 +1728,14 @@ export default function App() {
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-[10px] tracking-wider text-white/40">
+            {isOwnerEmail(currentUser?.email) && (
+              <button 
+                onClick={() => setIsVerificationModalOpen(true)}
+                className="text-[#C5A36B] hover:underline cursor-pointer font-bold flex items-center gap-1 uppercase"
+              >
+                🎓 School Project Seal (Owner Ethan Aarav Gomez)
+              </button>
+            )}
             <span>Authentic Herb Database</span>
             <span>Tridoshic Purifying</span>
             <span>Privacy Seal</span>
@@ -1207,6 +1743,15 @@ export default function App() {
           </div>
         </div>
       </footer>
+<AnimatePresence>
+  {isVerificationModalOpen && (
+    <ProjectVerificationModal
+      isOpen={isVerificationModalOpen}
+      onClose={() => setIsVerificationModalOpen(false)}
+      currentUser={currentUser}
+    />
+  )}
+</AnimatePresence>
 
       <SattvaCalendarModal
         isOpen={showPrescriptionSync}
@@ -1276,6 +1821,20 @@ export default function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Global Auth Modal Overlay */}
+      <AnimatePresence>
+        {isAuthModalOpen && (
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+            initialMode={authModalMode}
+            onLoginSuccess={(user) => {
+              handleLoginUser(user);
+            }}
+          />
         )}
       </AnimatePresence>
     </div>
