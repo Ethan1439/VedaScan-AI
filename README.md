@@ -2,6 +2,8 @@
 
 > A highly polished, interactive, personalized Ayurvedic medicine, herb, and wellness recommendation system designed to guide users on their journey toward optimal holistic health.
 
+**🔗 Live App on AI Studio:** [vedascan.ai.studio](https://vedascan.ai.studio)
+
 VedaScan uses deep Ayurvedic principles to analyze your symptoms, health conditions, or Dosha profiles (Prakriti), recommending natural remedies, dietary guides, and lifestyle modifications powered by safe, expert-curated wellness structures and integrated AI models.
 
 ---

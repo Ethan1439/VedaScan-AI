@@ -58,6 +58,7 @@ import WeightLossPlan from "./components/WeightLossPlan";
 import AuthModal from "./components/AuthModal";
 import AyurBot from "./components/AyurBot";
 import ProjectVerificationModal from "./components/ProjectVerificationModal";
+import AcademicHub from "./components/AcademicHub";
 
 const isOwnerEmail = (email?: string) => {
   if (!email) return false;
@@ -180,7 +181,7 @@ export default function App() {
   // Result state
   const [loading, setLoading] = useState(false);
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<"Consult" | "Diseases" | "Library" | "SattvaHabits" | "WeightLoss" | "Profile" | "AyurBot">("Consult");
+  const [activeTab, setActiveTab] = useState<"Consult" | "Diseases" | "Library" | "SattvaHabits" | "WeightLoss" | "Profile" | "AyurBot" | "Academic">("Consult");
   const [showApplyToast, setShowApplyToast] = useState<string | null>(null);
   const [savedConsultations, setSavedConsultations] = useState<SavedConsultation[]>(() => {
     try {
@@ -718,6 +719,22 @@ export default function App() {
             Ask AyurBot
           </button>
           <button
+            id="nav-academic-tab"
+            onClick={() => {
+              setActiveTab("Academic");
+              setTimeout(() => {
+                document.getElementById("academic-section")?.scrollIntoView({ behavior: "smooth" });
+              }, 100);
+            }}
+            className={`hover:text-[#C5A36B] transition cursor-pointer flex items-center gap-1.5 ${activeTab === "Academic" ? "text-[#C5A36B] font-bold" : "text-white/65"}`}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A36B] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C5A36B]"></span>
+            </span>
+            <span>📋 Functions</span>
+          </button>
+          <button
             id="nav-profile-tab"
             onClick={() => {
               if (!currentUser) {
@@ -886,6 +903,20 @@ export default function App() {
               </h1>
               <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
                 A multi-turn companion to clear any confusion about doshas, digestive fires (Agni), cellular toxicity (Ama), daily routines (Dinacharya), or specific herbs.
+              </p>
+            </>
+          )}
+
+          {activeTab === "Academic" && (
+            <>
+              <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
+                Interactive Capability Index
+              </span>
+              <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
+                Website <span className="text-[#C5A36B] italic font-semibold">Functions</span>.
+              </h1>
+              <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
+                Explore the complete interactive index of VedaScan's modular capabilities, software algorithms, and system integrations.
               </p>
             </>
           )}
@@ -1713,6 +1744,35 @@ export default function App() {
         {activeTab === "AyurBot" && (
           <div id="ayurbot-section" className="w-full animate-fade-in">
             <AyurBot />
+          </div>
+        )}
+
+        {/* Academic tab */}
+        {activeTab === "Academic" && (
+          <div id="academic-tab-section" className="w-full animate-fade-in">
+            <AcademicHub 
+              currentUser={currentUser} 
+              onNavigateTab={(targetTab: any) => {
+                setActiveTab(targetTab);
+                setTimeout(() => {
+                  if (targetTab === "Consult") {
+                    document.getElementById("consult-section-header")?.scrollIntoView({ behavior: "smooth" });
+                  } else if (targetTab === "WeightLoss") {
+                    document.getElementById("weight-loss-section")?.scrollIntoView({ behavior: "smooth" });
+                  } else if (targetTab === "Diseases") {
+                    document.getElementById("diseases-section")?.scrollIntoView({ behavior: "smooth" });
+                  } else if (targetTab === "Library") {
+                    document.getElementById("library-section")?.scrollIntoView({ behavior: "smooth" });
+                  } else if (targetTab === "SattvaHabits") {
+                    document.getElementById("sattva-habits-section")?.scrollIntoView({ behavior: "smooth" });
+                  } else if (targetTab === "AyurBot") {
+                    document.getElementById("ayurbot-container")?.scrollIntoView({ behavior: "smooth" });
+                  } else if (targetTab === "Profile") {
+                    document.getElementById("profile-section-container")?.scrollIntoView({ behavior: "smooth" });
+                  }
+                }, 150);
+              }}
+            />
           </div>
         )}
 
