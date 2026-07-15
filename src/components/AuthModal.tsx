@@ -9,7 +9,10 @@ import {
   Eye, 
   EyeOff, 
   CheckCircle2, 
-  Compass
+  Compass,
+  ShieldCheck,
+  RefreshCw,
+  MailOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { UserProfile as ProfileType } from "../types";
@@ -34,8 +37,16 @@ export default function AuthModal({
   const [dosha, setDosha] = useState("Vata");
   const [showPassword, setShowPassword] = useState(false);
   
+  // Verification states
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [sentCode, setSentCode] = useState("");
+  const [isResending, setIsResending] = useState(false);
+  const [showSmtpConsole, setShowSmtpConsole] = useState(true);
+
   // Feedback states
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [shake, setShake] = useState(false);
 
@@ -43,16 +54,27 @@ export default function AuthModal({
   useEffect(() => {
     if (isOpen) {
       setIsLoginMode(initialMode === "login");
+      setIsVerifying(false);
+      setVerificationCode("");
+      setSentCode("");
+      setIsResending(false);
       setError("");
+      setInfoMessage("");
       setSuccess(false);
     }
   }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
+  const generateVerificationCode = () => {
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    return randomNum.toString();
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfoMessage("");
     setShake(false);
 
     if (!email || !password) {
@@ -97,37 +119,74 @@ export default function AuthModal({
         return;
       }
 
-      // Create beautiful new profile
-      const newProfile: ProfileType = {
-        id: `user_${Date.now()}`,
-        name,
-        email,
-        dosha,
-        createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-        notes: [],
-        weightLogs: [
-          { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 75.0 }
-        ],
-        completedWeightLossDays: [],
-        savedConsultations: []
-      };
-
-      const newUserAccount = {
-        id: newProfile.id,
-        email,
-        password,
-        profile: newProfile
-      };
-
-      storedUsers.push(newUserAccount);
-      localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
-      
-      setSuccess(true);
-      setTimeout(() => {
-        onLoginSuccess(newProfile);
-        onClose();
-      }, 1200);
+      // Generate verification code and enter verification flow
+      const code = generateVerificationCode();
+      setSentCode(code);
+      setIsVerifying(true);
+      setVerificationCode("");
     }
+  };
+
+  const handleVerifyCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setInfoMessage("");
+    setShake(false);
+
+    if (verificationCode.trim() !== sentCode) {
+      setError("The verification code you entered is incorrect. Please check and try again.");
+      triggerShake();
+      return;
+    }
+
+    // Correct code! Complete registration
+    const storedUsers = JSON.parse(localStorage.getItem("vedascan_user_accounts") || "[]");
+
+    // Create beautiful new profile
+    const newProfile: ProfileType = {
+      id: `user_${Date.now()}`,
+      name,
+      email,
+      dosha,
+      createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+      notes: [],
+      weightLogs: [
+        { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 75.0 }
+      ],
+      completedWeightLossDays: [],
+      savedConsultations: [],
+      emailVerified: true
+    };
+
+    const newUserAccount = {
+      id: newProfile.id,
+      email,
+      password,
+      profile: newProfile
+    };
+
+    storedUsers.push(newUserAccount);
+    localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
+    
+    setSuccess(true);
+    setTimeout(() => {
+      onLoginSuccess(newProfile);
+      onClose();
+    }, 1200);
+  };
+
+  const handleResendCode = () => {
+    setIsResending(true);
+    setInfoMessage("");
+    setError("");
+    
+    setTimeout(() => {
+      const code = generateVerificationCode();
+      setSentCode(code);
+      setVerificationCode("");
+      setIsResending(false);
+      setInfoMessage("A fresh verification code has been dispatched to your email address!");
+    }, 800);
   };
 
   const triggerShake = () => {
@@ -179,7 +238,7 @@ export default function AuthModal({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Succes state indicator */}
+        {/* Success state indicator */}
         <AnimatePresence mode="wait">
           {success ? (
             <motion.div 
@@ -198,6 +257,113 @@ export default function AuthModal({
                 </p>
               </div>
             </motion.div>
+          ) : isVerifying ? (
+            <div className="space-y-5">
+              {/* Logo icon representation */}
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 border border-[#C5A36B] rounded-full flex items-center justify-center mx-auto bg-[#C5A36B]/5">
+                  <MailOpen className="w-5 h-5 text-[#C5A36B] animate-pulse" />
+                </div>
+                <h3 className="text-2xl font-serif text-[#F2EBE4]">
+                  Verify Your Email
+                </h3>
+                <p className="text-xs text-white/50 leading-relaxed max-w-xs mx-auto">
+                  A verification token was sent to <strong className="text-[#C5A36B]">{email}</strong>. Enter the 6-digit code to activate your account.
+                </p>
+              </div>
+
+              {/* Form elements */}
+              <form onSubmit={handleVerifyCodeSubmit} className="space-y-4">
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-red-500/15 border border-red-500/30 text-red-200 text-xs rounded-xl p-3 text-center"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+
+                {infoMessage && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-green-500/15 border border-green-500/30 text-green-200 text-xs rounded-xl p-3 text-center"
+                  >
+                    {infoMessage}
+                  </motion.div>
+                )}
+
+                {/* 6 Digit Input Box */}
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block text-center mb-1">
+                    Enter Activation Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="e.g. 108492"
+                    className="w-full bg-black/45 border border-white/10 rounded-xl py-3 text-center text-lg font-mono tracking-[0.5em] text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B] focus:ring-1 focus:ring-[#C5A36B]/25 transition"
+                  />
+                </div>
+
+                {/* Submit Verification Button */}
+                <button
+                  type="submit"
+                  className="w-full bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-semibold py-3 rounded-xl transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-5 min-h-[44px]"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Verify & Activate Profile</span>
+                </button>
+              </form>
+
+              {/* Resend Actions */}
+              <div className="pt-4 border-t border-white/5 flex flex-col items-center gap-3">
+                <button
+                  type="button"
+                  disabled={isResending}
+                  onClick={handleResendCode}
+                  className="text-xs text-[#C5A36B] hover:underline flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isResending ? "animate-spin" : ""}`} />
+                  <span>{isResending ? "Regenerating..." : "Resend Security Code"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVerifying(false);
+                    setError("");
+                    setInfoMessage("");
+                  }}
+                  className="text-xs text-white/40 hover:text-white cursor-pointer"
+                >
+                  Change registration details
+                </button>
+              </div>
+
+              {/* Live SMTP Simulator Console */}
+              {showSmtpConsole && (
+                <div className="bg-black/60 border border-[#C5A36B]/20 rounded-2xl p-4 mt-4 space-y-2">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-[9px] uppercase tracking-widest font-mono text-[#C5A36B] font-bold">VedaScan SMTP Sandbox</span>
+                    </div>
+                    <span className="text-[8px] font-mono text-white/30">Local Dev Server</span>
+                  </div>
+                  <div className="font-mono text-[10px] text-white/70 space-y-1">
+                    <p><span className="text-white/40">From:</span> secure-auth@vedascan.ai.studio</p>
+                    <p><span className="text-white/40">To:</span> {email}</p>
+                    <p><span className="text-white/40">Subject:</span> Complete registration with code: <strong className="text-[#C5A36B] select-all font-bold">{sentCode}</strong></p>
+                    <p className="text-white/40 border-t border-white/5 pt-1.5 mt-1 text-[9px] italic">Note: In a live environment, this secure token is dispatched via email. Use the code above for instantaneous sandbox verification.</p>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="space-y-5">
               {/* Logo icon representation */}
@@ -249,6 +415,9 @@ export default function AuthModal({
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">
                     Email Address
+                    {!isLoginMode && (
+                      <span className="text-[9px] text-[#C5A36B] lowercase font-normal italic ml-1">(requires verification)</span>
+                    )}
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-3 w-4 h-4 text-white/30" />

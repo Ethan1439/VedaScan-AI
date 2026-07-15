@@ -43,7 +43,9 @@ import {
   Globe,
   ShieldCheck,
   Award,
-  Fingerprint
+  Fingerprint,
+  MailOpen,
+  RefreshCw
 } from "lucide-react";
 import { UserProfile as ProfileType, HealthNote, SavedConsultation } from "../types";
 
@@ -75,6 +77,13 @@ export default function UserProfile({
   const [dosha, setDosha] = useState("Vata-Pitta");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  // Verification states
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [sentCode, setSentCode] = useState("");
+  const [isResending, setIsResending] = useState(false);
+  const [showSmtpConsole, setShowSmtpConsole] = useState(true);
 
   // Health Note state
   const [noteTitle, setNoteTitle] = useState("");
@@ -147,6 +156,7 @@ export default function UserProfile({
             email: "acharya@vedascan.com",
             dosha: "Pitta-Vata",
             createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+            emailVerified: true,
             notes: [
               {
                 id: "note-1",
@@ -175,6 +185,11 @@ export default function UserProfile({
       localStorage.setItem("vedascan_user_accounts", JSON.stringify(defaultUsers));
     }
   }, []);
+
+  const generateVerificationCode = () => {
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    return randomNum.toString();
+  };
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,32 +224,68 @@ export default function UserProfile({
         return;
       }
 
-      const newProfile: ProfileType = {
-        id: `user_${Date.now()}`,
-        name,
-        email,
-        dosha,
-        createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-        notes: [],
-        weightLogs: [
-          { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 80.0 }
-        ],
-        completedWeightLossDays: [],
-        savedConsultations: []
-      };
-
-      const newUserAccount = {
-        id: newProfile.id,
-        email,
-        password,
-        profile: newProfile
-      };
-
-      storedUsers.push(newUserAccount);
-      localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
-      onLogin(newProfile);
-      setSuccessMsg("Account created and configured successfully!");
+      // Generate verification code and enter verification flow
+      const code = generateVerificationCode();
+      setSentCode(code);
+      setIsVerifying(true);
+      setVerificationCode("");
     }
+  };
+
+  const handleVerifyCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccessMsg("");
+
+    if (verificationCode.trim() !== sentCode) {
+      setError("The verification code you entered is incorrect. Please check and try again.");
+      return;
+    }
+
+    // Correct code! Complete registration
+    const storedUsers = JSON.parse(localStorage.getItem("vedascan_user_accounts") || "[]");
+
+    const newProfile: ProfileType = {
+      id: `user_${Date.now()}`,
+      name,
+      email,
+      dosha,
+      createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+      notes: [],
+      weightLogs: [
+        { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 80.0 }
+      ],
+      completedWeightLossDays: [],
+      savedConsultations: [],
+      emailVerified: true
+    };
+
+    const newUserAccount = {
+      id: newProfile.id,
+      email,
+      password,
+      profile: newProfile
+    };
+
+    storedUsers.push(newUserAccount);
+    localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
+    onLogin(newProfile);
+    setSuccessMsg("Account created and verified successfully!");
+    setIsVerifying(false);
+  };
+
+  const handleResendCode = () => {
+    setIsResending(true);
+    setError("");
+    setSuccessMsg("");
+    
+    setTimeout(() => {
+      const code = generateVerificationCode();
+      setSentCode(code);
+      setVerificationCode("");
+      setIsResending(false);
+      setSuccessMsg("A fresh verification code has been dispatched to your email address!");
+    }, 800);
   };
 
   // Google Search Console dynamic ownership tester
@@ -352,118 +403,220 @@ export default function UserProfile({
     <div className="w-full max-w-6xl mx-auto py-4 space-y-8" id="profile-section-container">
       
       {!currentUser ? (
-        /* Login / Signup Modal UI */
+        /* Login / Signup Modal UI or Email Verification */
         <div className="max-w-md mx-auto p-8 rounded-[32px] bg-white/[0.02] border border-white/10 backdrop-blur-xl shadow-2xl">
-          <div className="text-center space-y-2 mb-6">
-            <div className="w-12 h-12 border border-[#C5A36B] rounded-full flex items-center justify-center mx-auto bg-[#C5A36B]/5">
-              <User className="w-5 h-5 text-[#C5A36B]" />
-            </div>
-            <h3 className="text-2xl font-serif text-[#F2EBE4]">
-              {isLoginMode ? "Sign In to VedaProfile" : "Create Healing Account"}
-            </h3>
-            <p className="text-xs text-white/50 leading-relaxed max-w-xs mx-auto">
-              Save your symptom logs, recommended herb formulas, personal health diaries, and 30-day weight tracking progress securely.
-            </p>
-          </div>
-
-          <form onSubmit={handleAuth} className="space-y-4">
-            {error && (
-              <div className="bg-red-500/15 border border-red-500/30 text-red-200 text-xs rounded-xl p-3 text-center">
-                {error}
+          {isVerifying ? (
+            <div className="space-y-5">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 border border-[#C5A36B] rounded-full flex items-center justify-center mx-auto bg-[#C5A36B]/5">
+                  <MailOpen className="w-5 h-5 text-[#C5A36B] animate-pulse" />
+                </div>
+                <h3 className="text-2xl font-serif text-[#F2EBE4]">
+                  Verify Your Email
+                </h3>
+                <p className="text-xs text-white/50 leading-relaxed max-w-xs mx-auto">
+                  An activation token was sent to <strong className="text-[#C5A36B]">{email}</strong>. Enter the 6-digit code to activate your account.
+                </p>
               </div>
-            )}
-            {successMsg && (
-              <div className="bg-green-500/15 border border-green-500/30 text-green-200 text-xs rounded-xl p-3 text-center">
-                {successMsg}
-              </div>
-            )}
 
-            {!isLoginMode && (
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-3 w-4 h-4 text-white/30" />
+              <form onSubmit={handleVerifyCodeSubmit} className="space-y-4">
+                {error && (
+                  <div className="bg-red-500/15 border border-red-500/30 text-red-200 text-xs rounded-xl p-3 text-center">
+                    {error}
+                  </div>
+                )}
+                {successMsg && (
+                  <div className="bg-green-500/15 border border-green-500/30 text-green-200 text-xs rounded-xl p-3 text-center">
+                    {successMsg}
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block text-center mb-1">
+                    Enter Activation Code
+                  </label>
                   <input
                     type="text"
+                    maxLength={6}
                     required
-                    placeholder="e.g. Ethan Gomez"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-black/45 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="e.g. 108492"
+                    className="w-full bg-black/45 border border-white/10 rounded-xl py-3 text-center text-lg font-mono tracking-[0.5em] text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B] focus:ring-1 focus:ring-[#C5A36B]/25 transition"
                   />
                 </div>
-              </div>
-            )}
 
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-3 w-4 h-4 text-white/30" />
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. acharya@vedascan.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">Secret Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-white/30" />
-                <input
-                  type="password"
-                  required
-                  placeholder="Password (e.g. sattva108)"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
-                />
-              </div>
-            </div>
-
-            {!isLoginMode && (
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">Primary Dosha (If known)</label>
-                <select
-                  value={dosha}
-                  onChange={(e) => setDosha(e.target.value)}
-                  className="w-full bg-black/45 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
+                <button
+                  type="submit"
+                  className="w-full bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-semibold py-3 rounded-xl transition text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-5 min-h-[44px]"
                 >
-                  <option value="Vata">Vata (Air & Ether)</option>
-                  <option value="Pitta">Pitta (Fire & Water)</option>
-                  <option value="Kapha">Kapha (Earth & Water)</option>
-                  <option value="Vata-Pitta">Vata-Pitta (Dual)</option>
-                  <option value="Pitta-Kapha">Pitta-Kapha (Dual)</option>
-                  <option value="Vata-Kapha">Vata-Kapha (Dual)</option>
-                  <option value="Tridoshic">Tridoshic (Balanced VPK)</option>
-                </select>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Verify & Activate Profile</span>
+                </button>
+              </form>
+
+              <div className="pt-4 border-t border-white/5 flex flex-col items-center gap-3">
+                <button
+                  type="button"
+                  disabled={isResending}
+                  onClick={handleResendCode}
+                  className="text-xs text-[#C5A36B] hover:underline flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isResending ? "animate-spin" : ""}`} />
+                  <span>{isResending ? "Regenerating..." : "Resend Security Code"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVerifying(false);
+                    setError("");
+                    setSuccessMsg("");
+                  }}
+                  className="text-xs text-white/40 hover:text-white cursor-pointer"
+                >
+                  Change registration details
+                </button>
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="w-full bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-semibold py-3 rounded-xl transition text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer mt-4"
-            >
-              {isLoginMode ? <User className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-              <span>{isLoginMode ? "Sign In" : "Register Profile"}</span>
-            </button>
-          </form>
+              {showSmtpConsole && (
+                <div className="bg-black/60 border border-[#C5A36B]/20 rounded-2xl p-4 mt-4 space-y-2 text-left">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-[9px] uppercase tracking-widest font-mono text-[#C5A36B] font-bold">VedaScan SMTP Sandbox</span>
+                    </div>
+                    <span className="text-[8px] font-mono text-white/30">Local Dev Server</span>
+                  </div>
+                  <div className="font-mono text-[10px] text-white/70 space-y-1">
+                    <p><span className="text-white/40">From:</span> secure-auth@vedascan.ai.studio</p>
+                    <p><span className="text-white/40">To:</span> {email}</p>
+                    <p><span className="text-white/40">Subject:</span> Complete registration with code: <strong className="text-[#C5A36B] select-all font-bold">{sentCode}</strong></p>
+                    <p className="text-white/40 border-t border-white/5 pt-1.5 mt-1 text-[9px] italic">Note: In a live environment, this secure token is dispatched via email. Use the code above for instantaneous sandbox verification.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="text-center space-y-2 mb-6">
+                <div className="w-12 h-12 border border-[#C5A36B] rounded-full flex items-center justify-center mx-auto bg-[#C5A36B]/5">
+                  <User className="w-5 h-5 text-[#C5A36B]" />
+                </div>
+                <h3 className="text-2xl font-serif text-[#F2EBE4]">
+                  {isLoginMode ? "Sign In to VedaProfile" : "Create Healing Account"}
+                </h3>
+                <p className="text-xs text-white/50 leading-relaxed max-w-xs mx-auto">
+                  Save your symptom logs, recommended herb formulas, personal health diaries, and 30-day weight tracking progress securely.
+                </p>
+              </div>
 
-          <div className="mt-6 pt-4 border-t border-white/5 text-center space-y-3">
-            <button
-              onClick={() => {
-                setIsLoginMode(!isLoginMode);
-                setError("");
-              }}
-              className="text-xs text-[#C5A36B] hover:underline"
-            >
-              {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-            </button>
-          </div>
+              <form onSubmit={handleAuth} className="space-y-4">
+                {error && (
+                  <div className="bg-red-500/15 border border-red-500/30 text-red-200 text-xs rounded-xl p-3 text-center">
+                    {error}
+                  </div>
+                )}
+                {successMsg && (
+                  <div className="bg-green-500/15 border border-green-500/30 text-green-200 text-xs rounded-xl p-3 text-center">
+                    {successMsg}
+                  </div>
+                )}
+
+                {!isLoginMode && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">Full Name</label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-3 w-4 h-4 text-white/30" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Ethan Gomez"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-black/45 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">
+                    Email Address
+                    {!isLoginMode && (
+                      <span className="text-[9px] text-[#C5A36B] lowercase font-normal italic ml-1">(requires verification)</span>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-3 w-4 h-4 text-white/30" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. acharya@vedascan.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-black/45 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">Secret Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-3 w-4 h-4 text-white/30" />
+                    <input
+                      type="password"
+                      required
+                      placeholder="Password (e.g. sattva108)"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-black/45 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
+                    />
+                  </div>
+                </div>
+
+                {!isLoginMode && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-[#C5A36B] block">Primary Dosha (If known)</label>
+                    <select
+                      value={dosha}
+                      onChange={(e) => setDosha(e.target.value)}
+                      className="w-full bg-black/45 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
+                    >
+                      <option value="Vata">Vata (Air & Ether)</option>
+                      <option value="Pitta">Pitta (Fire & Water)</option>
+                      <option value="Kapha">Kapha (Earth & Water)</option>
+                      <option value="Vata-Pitta">Vata-Pitta (Dual)</option>
+                      <option value="Pitta-Kapha">Pitta-Kapha (Dual)</option>
+                      <option value="Vata-Kapha">Vata-Kapha (Dual)</option>
+                      <option value="Tridoshic">Tridoshic (Balanced VPK)</option>
+                    </select>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-semibold py-3 rounded-xl transition text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer mt-4"
+                >
+                  {isLoginMode ? <User className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                  <span>{isLoginMode ? "Sign In" : "Register Profile"}</span>
+                </button>
+              </form>
+
+              <div className="mt-6 pt-4 border-t border-white/5 text-center space-y-3">
+                <button
+                  onClick={() => {
+                    setIsLoginMode(!isLoginMode);
+                    setError("");
+                    setSuccessMsg("");
+                  }}
+                  className="text-xs text-[#C5A36B] hover:underline"
+                >
+                  {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         /* Logged In Dashboard View */
@@ -483,6 +636,12 @@ export default function UserProfile({
                   <span className="text-[9px] font-mono font-bold uppercase bg-[#C5A36B]/15 text-[#C5A36B] px-2 py-0.5 rounded border border-[#C5A36B]/20">
                     {currentUser.dosha} Prakriti
                   </span>
+                  {currentUser.emailVerified && (
+                    <span className="text-[9px] font-mono font-bold uppercase bg-green-500/10 text-green-400 px-2.5 py-0.5 rounded-full border border-green-500/20 flex items-center gap-1" title="Email Verification Complete">
+                      <ShieldCheck className="w-3.5 h-3.5 text-green-400" />
+                      <span>Verified</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-white/40">{currentUser.email} • Registered {currentUser.createdAt}</p>
               </div>

@@ -70,6 +70,7 @@ export interface UserProfile {
   weightLogs: WeightLog[];
   completedWeightLossDays: number[]; // e.g., [1, 2, 5]
   savedConsultations: SavedConsultation[];
+  emailVerified?: boolean;
 }
 
 export interface HealthNote {
