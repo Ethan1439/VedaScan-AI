@@ -185,7 +185,7 @@ async function startServer() {
 
   // 1. Robots.txt: Directs search crawler bots and registers the sitemap path
   app.get("/robots.txt", (req, res) => {
-    const host = req.get("host") || "ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app";
+    const host = req.get("host") || "vedascan.ai.studio";
     const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
     res.type("text/plain");
     res.send(`User-agent: *
@@ -198,7 +198,7 @@ Sitemap: ${protocol}://${host}/sitemap.xml
 
   // 2. Sitemap.xml: Dynamic XML sitemap listing active tab URLs, all Ayurvedic herbs, and disease treatise URLs
   app.get("/sitemap.xml", (req, res) => {
-    const host = req.get("host") || "ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app";
+    const host = req.get("host") || "vedascan.ai.studio";
     const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
     const baseUrl = `${protocol}://${host}`;
     

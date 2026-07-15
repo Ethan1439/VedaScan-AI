@@ -14,7 +14,7 @@ export function getApiUrl(path: string): string {
     
     // If we're on GitHub Pages, or any non-container environment (and we aren't running local dev server)
     if (isGitHubPages || (!isDevContainer && !isLocalServer)) {
-      return `https://ayurvedic-remedy-recommendations-799694915384.asia-southeast1.run.app${cleanPath}`;
+      return `https://vedascan.ai.studio${cleanPath}`;
     }
   }
 
