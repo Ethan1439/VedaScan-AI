@@ -97,6 +97,8 @@ export default function UserProfile({
   const [testOutput, setTestOutput] = useState("");
   const [activeSeoTab, setActiveSeoTab] = useState<"gsc" | "sitemap" | "robots" | "trademark">("trademark");
 
+
+
   // Keep test route / GSC verification tab restricted to the main account
   useEffect(() => {
     if (isOwnerEmail(currentUser?.email)) {
@@ -655,6 +657,8 @@ export default function UserProfile({
               <span>Log Out</span>
             </button>
           </div>
+
+
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
