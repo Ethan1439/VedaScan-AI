@@ -179,6 +179,74 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Disable x-powered-by to reduce server fingerprinting vulnerabilities
+  app.disable("x-powered-by");
+
+  // Intercept and disable HTTP OPTIONS method for enhanced security
+  app.use((req, res, next) => {
+    if (req.method === "OPTIONS") {
+      res.setHeader("Allow", "GET, HEAD, POST");
+      return res.status(405).send("Method Not Allowed");
+    }
+    next();
+  });
+
+  // Inject comprehensive security headers and secure cookie settings
+  app.use((req, res, next) => {
+    // 1. HTTP Strict Transport Security (HSTS) - enforce HTTPS for 1 year with subdomains
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+
+    // 2. Prevent referrer information from leaking
+    res.setHeader("Referrer-Policy", "no-referrer");
+
+    // 3. Robust Content Security Policy (CSP) compatible with AI Studio preview environment
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://generativelanguage.googleapis.com; frame-ancestors 'self' https://*.google.com https://*.run.app https://*.studio https://*.google.dev; object-src 'none';"
+    );
+
+    // 4. Prevent MIME type sniffing
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    // 5. Mitigate cross-site scripting (XSS)
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+
+    // 6. Block clickjacking attempts
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+
+    // Remove system-identifying headers
+    res.removeHeader("Server");
+    res.removeHeader("X-Powered-By");
+
+    // 7. Secure all Set-Cookie headers dynamically (HttpOnly, Secure, SameSite=Lax flags)
+    const originalSetHeader = res.setHeader;
+    res.setHeader = function (name: string, value: any): any {
+      if (typeof name === "string" && name.toLowerCase() === "set-cookie") {
+        if (Array.isArray(value)) {
+          value = value.map(cookie => {
+            if (typeof cookie === "string") {
+              let updated = cookie;
+              if (!/;\s*Secure/i.test(updated)) updated += "; Secure";
+              if (!/;\s*HttpOnly/i.test(updated)) updated += "; HttpOnly";
+              if (!/;\s*SameSite/i.test(updated)) updated += "; SameSite=Lax";
+              return updated;
+            }
+            return cookie;
+          });
+        } else if (typeof value === "string") {
+          let updated = value;
+          if (!/;\s*Secure/i.test(updated)) updated += "; Secure";
+          if (!/;\s*HttpOnly/i.test(updated)) updated += "; HttpOnly";
+          if (!/;\s*SameSite/i.test(updated)) updated += "; SameSite=Lax";
+          value = updated;
+        }
+      }
+      return originalSetHeader.call(this, name, value);
+    } as any;
+
+    next();
+  });
+
   app.use(express.json());
 
   // --- Google Search Console & SEO Optimization Endpoints ---
