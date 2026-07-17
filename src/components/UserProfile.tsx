@@ -45,7 +45,14 @@ import {
   Award,
   Fingerprint,
   MailOpen,
-  RefreshCw
+  RefreshCw,
+  Cpu,
+  Layers,
+  Terminal,
+  Server,
+  Database,
+  Code,
+  BookOpen
 } from "lucide-react";
 import { UserProfile as ProfileType, HealthNote, SavedConsultation } from "../types";
 
@@ -96,6 +103,9 @@ export default function UserProfile({
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testOutput, setTestOutput] = useState("");
   const [activeSeoTab, setActiveSeoTab] = useState<"gsc" | "sitemap" | "robots" | "trademark">("trademark");
+
+  // WRO Engineering Journal State
+  const [activeJournalTab, setActiveJournalTab] = useState<"architecture" | "activities" | "ai" | "frontend">("architecture");
 
 
 
@@ -865,6 +875,422 @@ export default function UserProfile({
 
             </div>
 
+          </div>
+
+          {/* WRO Future Innovators: Engineering Journal & System Architecture */}
+          <div className="p-6 md:p-8 rounded-[32px] bg-white/[0.03] border border-white/10 backdrop-blur-xl mt-8 space-y-6">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 border-b border-white/5">
+              <div>
+                <span className="text-[10px] font-mono tracking-widest text-[#C5A36B] uppercase font-bold bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-2.5 py-1 rounded-full">
+                  WRO Future Innovators Hub
+                </span>
+                <h3 className="text-xl font-serif text-[#F2EBE4] font-semibold mt-2 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-[#C5A36B]" />
+                  <span>Engineering Journal & System Architecture</span>
+                </h3>
+                <p className="text-white/40 text-[11px] mt-1 leading-relaxed">
+                  {isOwnerEmail(currentUser?.email) 
+                    ? "Full-stack developer console: deep diagnostic schemas and Node.js backend pipelines."
+                    : "Client-side engineering overview: component topology, local state engines, and visual systems."
+                  }
+                </p>
+              </div>
+
+              {/* Dynamic Journal Navigation Tabs */}
+              <div className="flex flex-wrap gap-1 bg-black/40 p-1 rounded-xl border border-white/5 self-stretch lg:self-auto">
+                {isOwnerEmail(currentUser?.email) ? (
+                  <>
+                    <button
+                      onClick={() => setActiveJournalTab("architecture")}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                        activeJournalTab === "architecture" ? "bg-[#C5A36B] text-black" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <Layers className="w-3 h-3" /> Topology Schema
+                    </button>
+                    <button
+                      onClick={() => setActiveJournalTab("activities")}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                        activeJournalTab === "activities" ? "bg-[#C5A36B] text-black" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <Server className="w-3 h-3" /> Backend API Router
+                    </button>
+                    <button
+                      onClick={() => setActiveJournalTab("ai")}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                        activeJournalTab === "ai" ? "bg-[#C5A36B] text-black" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <Cpu className="w-3 h-3" /> AI Cognitive Layer
+                    </button>
+                    <button
+                      onClick={() => setActiveJournalTab("frontend")}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                        activeJournalTab === "frontend" ? "bg-[#C5A36B] text-black" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <Code className="w-3 h-3" /> Frontend Activities
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setActiveJournalTab("architecture")}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                        activeJournalTab === "architecture" ? "bg-[#C5A36B] text-black" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <Layers className="w-3 h-3" /> UI Component Graph
+                    </button>
+                    <button
+                      onClick={() => setActiveJournalTab("frontend")}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                        activeJournalTab === "frontend" ? "bg-[#C5A36B] text-black" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <Code className="w-3 h-3" /> Client-Side State
+                    </button>
+                    <button
+                      onClick={() => setActiveJournalTab("activities")}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                        activeJournalTab === "activities" ? "bg-[#C5A36B] text-black" : "text-white/60 hover:text-white"
+                      }`}
+                    >
+                      <Sparkles className="w-3 h-3" /> Design Language
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* TAB PANELS CONTAINER */}
+            <div className="bg-black/25 border border-white/5 p-6 rounded-2xl">
+              
+              {/* === ALL USERS / ARCHITECTURE DIAGRAM TAB === */}
+              {activeJournalTab === "architecture" && (
+                <div className="space-y-6 animate-fade-in">
+                  {isOwnerEmail(currentUser?.email) ? (
+                    // OWNER: FULL-STACK BLUEPRINT
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-[#F2EBE4] flex items-center gap-1.5">
+                          <Layers className="w-4 h-4 text-[#C5A36B]" />
+                          <span>Full-Stack System Topology</span>
+                        </h4>
+                        <span className="text-[9px] font-mono bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded uppercase">
+                          Direct Node.js API Connected
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-white/60 leading-relaxed">
+                        Below is the real-time topological flow of our secure full-stack environment. The Vite frontend proxies all AI model generations through a containerized Node.js API endpoint layer, hiding authentication signatures and enforcing structured JSON validation.
+                      </p>
+
+                      {/* Topo Diagram */}
+                      <pre className="text-[10px] md:text-xs font-mono text-[#C5A36B] bg-black/60 p-4 rounded-xl border border-white/5 overflow-x-auto select-none leading-relaxed leading-5">
+{`┌────────────────────────────────────────────────────────┐
+│               BROWSER CLIENT VIEW LAYER                │
+│             (Vite + React 18 + Tailwind CSS)            │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            │ Secure HTTPS Requests
+                            │ (JSON Payload & Route Parameters)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│              NODE.JS EXPRESS CONTAINER                 │
+│              (Runs on Ingress Port 3000)               │
+│                                                        │
+│  ├── [Secure Headers Middleware]                       │
+│  │    (Strict-Transport-Security, CSP Frame Rules)     │
+│  │                                                     │
+│  ├── [Dynamic Google Site Verification Router]         │
+│  │    (Renders live ownership challenge endpoints)     │
+│  │                                                     │
+│  └── [REST API Route Controllers]                     │
+│       (/api/recommend, /api/nlp-extract, /api/chat)    │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            │ @google/genai TypeScript SDK
+                            │ (API Key securely held in environment)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│               GOOGLE GEMINI COGNITIVE LAYER            │
+│       (Multimodal Models: Gemini 1.5 & 2.0 Flash)       │
+│                                                        │
+│  ├── [System Instruction Anchoring]                    │
+│  │    (Posology constraints, safety-rejection loops)  │
+│  │                                                        │
+│  └── [Strict Response Schema Mapping]                  │
+│       (Forces rigid JSON structures matching App types)│
+└────────────────────────────────────────────────────────┘`}
+                      </pre>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[11px] leading-relaxed">
+                        <div className="bg-white/[0.01] border border-white/5 p-3 rounded-xl space-y-1">
+                          <strong className="text-[#F2EBE4] font-medium block">1. Decoupled Ingress</strong>
+                          <span className="text-white/50">The browser client is fully divorced from backend model secrets. It triggers API fetches dynamically based on somatic symptom check boxes.</span>
+                        </div>
+                        <div className="bg-white/[0.01] border border-white/5 p-3 rounded-xl space-y-1">
+                          <strong className="text-[#F2EBE4] font-medium block">2. Node.js Ingress Bridge</strong>
+                          <span className="text-white/50">Express hosts both Vite assets in production and intercepts high-risk headers, validating input lengths and rate-limiting potential abusers.</span>
+                        </div>
+                        <div className="bg-white/[0.01] border border-white/5 p-3 rounded-xl space-y-1">
+                          <strong className="text-[#F2EBE4] font-medium block">3. Structured AI Binding</strong>
+                          <span className="text-white/50">No string parsing errors. Prompt engines utilize programmatic models to enforce standard schemas, ensuring flawless visual lists without data slop.</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // NON-OWNER: GUEST FRONTEND-ONLY ARCHITECTURE GRAPH
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-[#F2EBE4] flex items-center gap-1.5">
+                          <Layers className="w-4 h-4 text-[#C5A36B]" />
+                          <span>Frontend App Component Hierarchy</span>
+                        </h4>
+                        <span className="text-[9px] font-mono bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded uppercase">
+                          Client Interface Active
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-white/60 leading-relaxed">
+                        VedaScan operates a highly optimized Single Page Application component hierarchy. State travels down unidirectionally from the main layout context to modular visual units, preventing unnecessary layout flickers.
+                      </p>
+
+                      {/* Component Graph */}
+                      <pre className="text-[10px] md:text-xs font-mono text-[#C5A36B] bg-black/60 p-4 rounded-xl border border-white/5 overflow-x-auto select-none leading-relaxed leading-5">
+{`┌────────────────────────────────────────────────────────┐
+│                     [src/App.tsx]                      │
+│            Main Hydration & Routing Core               │
+│          Handles activeTab and currentUser State       │
+└───────────────────────────┬────────────────────────────┘
+                            │
+      ┌─────────────────────┼─────────────────────┐
+      ▼                     ▼                     ▼
+┌───────────┐         ┌───────────┐         ┌───────────┐
+│Consult.tsx│         │Diseases.ts│         │Library.tsx│
+│Somatic    │         │Pathology  │         │Ayurvedic  │
+│Symptom    │         │Reference  │         │Herb       │
+│Tracker    │         │Module     │         │Directory  │
+└───────────┘         └───────────┘         └───────────┘
+      │                     │                     │
+      ▼                     ▼                     ▼
+┌────────────────────────────────────────────────────────┐
+│                    COMMON SHARED UI                    │
+│      (Tailwind Canvas Grid, Lucide Icon Pack, Fonts)   │
+└────────────────────────────────────────────────────────┘`}
+                      </pre>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] leading-relaxed">
+                        <div className="bg-white/[0.01] border border-white/5 p-3.5 rounded-xl space-y-1">
+                          <strong className="text-[#F2EBE4] font-medium block">Unidirectional Dataflow</strong>
+                          <span className="text-white/50">React state properties are strictly bound to parameters. Callback functions bubble state changes upwards, maintaining a deterministic interface state at all zoom levels.</span>
+                        </div>
+                        <div className="bg-white/[0.01] border border-white/5 p-3.5 rounded-xl space-y-1">
+                          <strong className="text-[#F2EBE4] font-medium block">Highly Modular Design</strong>
+                          <span className="text-white/50">No inline CSS or bulky layout structures. Standard components compartmentalize functional views, preventing large bundle weights and keeping loading speeds near instantaneous.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* === TAB PANEL: ACTIVITIES (BACKEND ENDPOINTS FOR OWNER, DESIGN SYSTEM FOR GUEST) === */}
+              {activeJournalTab === "activities" && (
+                <div className="space-y-6 animate-fade-in">
+                  {isOwnerEmail(currentUser?.email) ? (
+                    // OWNER: BACKEND ROUTE MAP & DETAILS
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-semibold text-[#F2EBE4] flex items-center gap-1.5">
+                        <Server className="w-4 h-4 text-[#C5A36B]" />
+                        <span>Node.js Express API Controllers</span>
+                      </h4>
+                      <p className="text-xs text-white/60 leading-relaxed">
+                        The Node.js backend implements an asynchronous controller loop that translates HTTP requests into semantic queries. Each route handles a custom chunk of our core features:
+                      </p>
+
+                      <div className="space-y-3">
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-[11px] text-[#C5A36B] font-bold bg-[#C5A36B]/10 px-2 py-0.5 rounded">POST /api/recommend</span>
+                            <span className="text-[10px] font-mono text-white/40">Status: Active (Gemini API)</span>
+                          </div>
+                          <p className="text-[11px] text-white/60">
+                            <strong>Function:</strong> Accepts raw patient symptoms, age, and gender. Instructs the cognitive engine to evaluate Veda principles and outputs a rigid list of matching Ayurvedic medicines.
+                          </p>
+                          <span className="text-[10px] font-mono text-white/30 block bg-black/40 p-2 rounded border border-white/[0.02]">
+                            Input Schema: {"{ symptoms: string[], severity: string, gender: string, age: number }"}
+                          </span>
+                        </div>
+
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-[11px] text-[#C5A36B] font-bold bg-[#C5A36B]/10 px-2 py-0.5 rounded">POST /api/nlp-extract</span>
+                            <span className="text-[10px] font-mono text-white/40">Status: Active (NLP Somatics)</span>
+                          </div>
+                          <p className="text-[11px] text-white/60">
+                            <strong>Function:</strong> Evaluates unformatted clinical diaries to extract physical imbalances, active symptoms, and emotional attributes. Matches findings with structural Ayurvedic keys.
+                          </p>
+                        </div>
+
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-[11px] text-[#C5A36B] font-bold bg-[#C5A36B]/10 px-2 py-0.5 rounded">POST /api/chat</span>
+                            <span className="text-[10px] font-mono text-white/40">Status: Active (AyurBot Interactive)</span>
+                          </div>
+                          <p className="text-[11px] text-white/60">
+                            <strong>Function:</strong> Generates responsive, adaptive conversations with our conversational therapist. Handles custom streaming-like payloads with system-anchored prompt instructions.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // GUEST: FRONTEND AESTHETIC DESIGN LANGUAGES
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-semibold text-[#F2EBE4] flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-[#C5A36B]" />
+                        <span>Aesthetic Design Language & Visual System</span>
+                      </h4>
+                      <p className="text-xs text-white/60 leading-relaxed">
+                        Craftsmanship is paramount. VedaScan is strictly styled with a custom high-contrast visual architecture featuring:
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-2">
+                          <span className="font-serif text-[#C5A36B] font-bold text-sm block">1. Color Palette</span>
+                          <p className="text-white/50 leading-relaxed text-[11px]">
+                            Earthy warm charcoal grays (<code className="text-[#C5A36B]">#080A09</code>) representing solid elements, paired with gold sand highlights (<code className="text-[#C5A36B]">#C5A36B</code>) signaling inner vitality.
+                          </p>
+                        </div>
+
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-2">
+                          <span className="font-serif text-[#C5A36B] font-bold text-sm block">2. Font Pairings</span>
+                          <p className="text-white/50 leading-relaxed text-[11px]">
+                            Primary headings are set in <strong>Playfair Display</strong> and <strong>Outfit</strong> for classic editorial elegance, supported by clean <strong>Inter</strong> for optimal medical legibility.
+                          </p>
+                        </div>
+
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-2">
+                          <span className="font-serif text-[#C5A36B] font-bold text-sm block">3. Rhythm & Space</span>
+                          <p className="text-white/50 leading-relaxed text-[11px]">
+                            Rather than grid grids or monotonous layouts, we establish dynamic pacing with custom-rounded borders (<code className="text-[#C5A36B]">32px</code>) and atmospheric blur backdrops.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* === TAB PANEL: AI (AI DETAILS FOR OWNER ONLY) === */}
+              {activeJournalTab === "ai" && isOwnerEmail(currentUser?.email) && (
+                <div className="space-y-4 animate-fade-in">
+                  <h4 className="text-sm font-semibold text-[#F2EBE4] flex items-center gap-1.5">
+                    <Cpu className="w-4 h-4 text-[#C5A36B]" />
+                    <span>AI Cognitive Layer & Schema Anchoring</span>
+                  </h4>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    VedaScan communicates natively with the <strong>Google Gemini API</strong> using the modern, server-side <code className="text-[#C5A36B]">@google/genai</code> SDK. We completely bypass string extraction risks by utilizing strict parameter constraints.
+                  </p>
+
+                  <div className="bg-black/45 p-4 rounded-xl border border-white/5 space-y-3 text-xs">
+                    <strong className="text-[#F2EBE4] block">Programmatic Response Definition:</strong>
+                    <pre className="text-[10px] font-mono text-[#C5A36B] bg-black/60 p-3 rounded-lg border border-white/5 overflow-x-auto whitespace-pre">
+{`import { GoogleGenAI, Type } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+// Rigid Response Schema mapping
+const medicineSchema = {
+  type: Type.OBJECT,
+  properties: {
+    medicines: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          sanskritName: { type: Type.STRING },
+          type: { type: Type.STRING },
+          dosageInstructions: { type: Type.STRING },
+          safetyNotes: { type: Type.STRING }
+        }
+      }
+    }
+  }
+};`}
+                    </pre>
+                    <p className="text-[11px] text-white/50 leading-relaxed">
+                      By anchoring system instructions with classical Ayurveda texts (Charaka Samhita and Susruta Samhita), the model refuses to recommend dangerous or toxic compounds. If input symptoms are extreme, the cognitive layer automatically flags a safety rejection notice, directing users to immediate clinical practitioners.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* === TAB PANEL: FRONTEND (EXPLAIN FRONTEND ACTIVITIES FOR BOTH ACCOUNTS) === */}
+              {activeJournalTab === "frontend" && (
+                <div className="space-y-6 animate-fade-in">
+                  {isOwnerEmail(currentUser?.email) ? (
+                    // OWNER: FULL FRONTEND ACTIVITIES
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-semibold text-[#F2EBE4] flex items-center gap-1.5">
+                        <Code className="w-4 h-4 text-[#C5A36B]" />
+                        <span>Frontend Systems & Client Hydration</span>
+                      </h4>
+                      <p className="text-xs text-white/60 leading-relaxed">
+                        The client-side interface manages real-time interactions, data synchronization, and view layouts:
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-2">
+                          <span className="font-serif text-[#C5A36B] font-bold text-sm block">Interactive Core State</span>
+                          <p className="text-white/50 leading-relaxed text-[11px]">
+                            Centralizes patient registration, active diagnostic checklists, saved medical consultation reports, and symptom calendars inside reactive states. Instantly syncs state properties without freezing frame render loops.
+                          </p>
+                        </div>
+
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-2">
+                          <span className="font-serif text-[#C5A36B] font-bold text-sm block">Responsive Grid & Density</span>
+                          <p className="text-white/50 leading-relaxed text-[11px]">
+                            Enforces fluid layout bounding from high-resolution bento grids down to compact vertical phone dimensions. Touch targets for all medical check inputs are set to a minimum threshold of <code className="text-[#C5A36B]">44px</code> for error-free accessibility.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // GUEST: FRONTEND STATE ENGINE & PERSISTENCE
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-semibold text-[#F2EBE4] flex items-center gap-1.5">
+                        <Code className="w-4 h-4 text-[#C5A36B]" />
+                        <span>Client State Engine & Micro-Persistence</span>
+                      </h4>
+                      <p className="text-xs text-white/60 leading-relaxed">
+                        To maintain light network weights, VedaScan operates a custom client-side state engine. No databases are required for visitor testing, preserving user privacy.
+                      </p>
+
+                      <div className="space-y-3">
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-1">
+                          <strong className="text-[#C5A36B] font-mono text-[11px] block">1. Local Cache Hydration</strong>
+                          <p className="text-[11px] text-white/50">
+                            Ayurvedic constitution details, 30-day weight loss checklists, and somatic symptoms remain held inside memory structures, avoiding remote leaks.
+                          </p>
+                        </div>
+
+                        <div className="bg-[#080A09] border border-white/5 p-4 rounded-xl space-y-1">
+                          <strong className="text-[#C5A36B] font-mono text-[11px] block">2. Infinite Render Mitigation</strong>
+                          <p className="text-[11px] text-white/50">
+                            Our components feature guarded React <code className="text-white">useEffect</code> loops. State modifications are triggered exclusively through user clicks, keeping baseline thread overheads close to zero.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
           </div>
 
           {/* Google Search Console & SEO Optimization Center Card */}
