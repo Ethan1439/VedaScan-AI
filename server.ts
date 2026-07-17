@@ -23,6 +23,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import nodemailer from "nodemailer";
 
 // Load environment variables inside the server
 dotenv.config();
@@ -486,6 +487,154 @@ Sitemap: ${protocol}://${host}/sitemap.xml
 
   app.get("/trademark.json", (req, res) => {
     res.json(TRADEMARK_DATA);
+  });
+
+  // --- Lazy load and configure SMTP transporter ---
+  let mailTransporter: any = null;
+  let adminGmailAccessToken: string | null = null;
+
+  async function getMailTransporter() {
+    if (!mailTransporter) {
+      const host = process.env.SMTP_HOST;
+      const port = parseInt(process.env.SMTP_PORT || "587", 10);
+      const user = process.env.SMTP_USER;
+      const pass = process.env.SMTP_PASS;
+
+      if (user && pass) {
+        mailTransporter = nodemailer.createTransport({
+          host: host || "smtp.gmail.com",
+          port,
+          secure: port === 465,
+          auth: {
+            user,
+            pass,
+          },
+        });
+      }
+    }
+    return mailTransporter;
+  }
+
+  // API route to register administrator's Google Workspace access token
+  app.post("/api/save-admin-token", (req, res) => {
+    const { token } = req.body;
+    adminGmailAccessToken = token || null;
+    console.log(`[AUTH SERVER] Admin Gmail Access Token update request. HasToken: ${!!adminGmailAccessToken}`);
+    res.json({ success: true, message: "Admin Gmail dispatch token updated successfully." });
+  });
+
+  // API route to send verification code email
+  app.post("/api/send-code", async (req, res) => {
+    const { email, code, name, googleAccessToken } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: "Email and code are required." });
+    }
+
+    const htmlContent = `
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0f1110; color: #e0d8d0; border: 1px solid #C5A36B; border-radius: 24px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="text-align: center; border-bottom: 1px solid rgba(197, 163, 107, 0.2); padding-bottom: 25px; margin-bottom: 30px;">
+          <h1 style="font-family: Georgia, serif; color: #F2EBE4; margin: 0; font-size: 28px; letter-spacing: 1px;">ॐ VedaScan AI</h1>
+          <p style="color: #C5A36B; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; margin: 5px 0 0 0;">Ayurvedic Diagnostic Suite & Healing Portal</p>
+        </div>
+        
+        <div style="line-height: 1.6; font-size: 14px;">
+          <p style="color: #F2EBE4; font-size: 16px;">Namaste ${name ? name : "Seeker of Wellness"},</p>
+          <p>Thank you for initiating your registration with VedaScan AI. To verify your email address and establish your personalized VedaProfile, please enter the secure 6-digit activation code below:</p>
+          
+          <div style="text-align: center; margin: 40px 0;">
+            <div style="display: inline-block; background-color: rgba(197, 163, 107, 0.1); border: 2px solid #C5A36B; border-radius: 16px; padding: 15px 40px; font-size: 32px; font-family: monospace; font-weight: bold; color: #C5A36B; letter-spacing: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+              ${code}
+            </div>
+            <p style="font-size: 11px; color: rgba(224, 216, 208, 0.5); margin-top: 10px;">This security code is active for 15 minutes.</p>
+          </div>
+          
+          <p>Once entered, your constitutional Prakriti profile, personalized weight reduction track, and herbal remedies dashboard will be fully synchronized and unlocked.</p>
+          
+          <p style="border-top: 1px solid rgba(197, 163, 107, 0.1); padding-top: 25px; margin-top: 35px; font-size: 12px; color: rgba(224, 216, 208, 0.6); font-style: italic;">
+            "Health is a state of physical, mental, social, and spiritual well-being."<br>
+            — Sushruta Samhita
+          </p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 40px; border-top: 1px solid rgba(197, 163, 107, 0.2); padding-top: 20px; font-size: 11px; color: rgba(224, 216, 208, 0.4);">
+          <p>This is an automated transaction verification system from VedaScan AI Studio.</p>
+          <p>© 2026 VedaScan. All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
+    const activeToken = googleAccessToken || adminGmailAccessToken;
+
+    if (activeToken) {
+      console.log(`[AUTH SERVER] Dispatching email to ${email} using Google Gmail API...`);
+      try {
+        const subjectStr = `[VedaScan] ${code} is your secure registration activation code`;
+        const utf8Subject = `=?utf-8?B?${Buffer.from(subjectStr).toString("base64")}?=`;
+        const mimeParts = [
+          `To: ${email}`,
+          `Subject: ${utf8Subject}`,
+          "MIME-Version: 1.0",
+          "Content-Type: text/html; charset=utf-8",
+          "Content-Transfer-Encoding: base64",
+          "",
+          Buffer.from(htmlContent).toString("base64")
+        ];
+        const rawMime = mimeParts.join("\r\n");
+        const encodedRaw = Buffer.from(rawMime)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        const gmailResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${activeToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ raw: encodedRaw })
+        });
+
+        if (!gmailResponse.ok) {
+          const errMsg = await gmailResponse.text();
+          throw new Error(`Gmail API failure: ${gmailResponse.status} - ${errMsg}`);
+        }
+
+        console.log(`[AUTH SERVER] Gmail API successfully dispatched verification code to ${email}.`);
+        return res.json({ success: true, message: "Verification code sent to your email successfully via Gmail API." });
+      } catch (gmailErr: any) {
+        console.error("Gmail API delivery failed, trying SMTP fallback...", gmailErr);
+      }
+    }
+
+    console.log(`[AUTH SERVER] Attempting real SMTP email dispatch for ${email} with code ${code}`);
+    const client = await getMailTransporter();
+    
+    if (!client) {
+      console.log(`[AUTH SERVER] [SANDBOX SIMULATION] Gmail API and SMTP configurations are not present. Bypassing delivery. Verification code is: ${code}`);
+      return res.json({ 
+        success: true, 
+        message: "Google Gmail API and SMTP credentials are not configured. Sandbox simulation active: code auto-filled!",
+        isSandboxFallback: true,
+        code
+      });
+    }
+
+    try {
+      const user = process.env.SMTP_USER;
+      await client.sendMail({
+        from: `"${process.env.SMTP_FROM_NAME || 'VedaScan Auth'}" <${process.env.SMTP_FROM_EMAIL || user}>`,
+        to: email,
+        subject: `[VedaScan] ${code} is your secure registration activation code`,
+        text: `Namaste. Your secure VedaScan registration verification code is: ${code}. Please enter this on the portal to activate your account.`,
+        html: htmlContent
+      });
+
+      res.json({ success: true, message: "Verification code sent to your email successfully." });
+    } catch (e: any) {
+      console.error("Failed to send verification email through SMTP:", e);
+      res.status(500).json({ error: "Failed to dispatch email. Please verify Google authorization or SMTP configurations." });
+    }
   });
 
   // 1. Get static herbs database

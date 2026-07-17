@@ -31,3 +31,109 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(197, 163, 107, 0.5);
 }
+
+/* UNIVERSAL ACCESSIBILITY RE-STYLINGS */
+
+/* Font Size Scaling Classes */
+.a11y-font-large {
+  font-size: 115% !important;
+}
+.a11y-font-large p, .a11y-font-large span, .a11y-font-large li, .a11y-font-large button, .a11y-font-large input, .a11y-font-large textarea {
+  font-size: 1.05rem !important;
+  line-height: 1.625 !important;
+}
+.a11y-font-large h1 { font-size: 2.75rem !important; }
+.a11y-font-large h2 { font-size: 1.85rem !important; }
+.a11y-font-large h3 { font-size: 1.45rem !important; }
+
+.a11y-font-extra-large {
+  font-size: 130% !important;
+}
+.a11y-font-extra-large p, .a11y-font-extra-large span, .a11y-font-extra-large li, .a11y-font-extra-large button, .a11y-font-extra-large input, .a11y-font-extra-large textarea {
+  font-size: 1.2rem !important;
+  line-height: 1.75 !important;
+}
+.a11y-font-extra-large h1 { font-size: 3.25rem !important; }
+.a11y-font-extra-large h2 { font-size: 2.25rem !important; }
+.a11y-font-extra-large h3 { font-size: 1.75rem !important; }
+
+/* Dyslexia Readability Overrides */
+.a11y-dyslexia {
+  font-family: "JetBrains Mono", Courier, monospace !important;
+  letter-spacing: 0.08em !important;
+  word-spacing: 0.12em !important;
+  line-height: 1.85 !important;
+}
+
+/* High Contrast Mode Overrides */
+.a11y-high-contrast {
+  background-color: #000000 !important;
+  background-image: none !important;
+  color: #FFFFFF !important;
+}
+
+.a11y-high-contrast div,
+.a11y-high-contrast section,
+.a11y-high-contrast main,
+.a11y-high-contrast nav,
+.a11y-high-contrast footer,
+.a11y-high-contrast pre {
+  background-color: #000000 !important;
+  background-image: none !important;
+  color: #FFFFFF !important;
+  border-color: #FFFF00 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.a11y-high-contrast span,
+.a11y-high-contrast p,
+.a11y-high-contrast li,
+.a11y-high-contrast label,
+.a11y-high-contrast h1,
+.a11y-high-contrast h2,
+.a11y-high-contrast h3,
+.a11y-high-contrast h4,
+.a11y-high-contrast h5,
+.a11y-high-contrast h6,
+.a11y-high-contrast strong {
+  color: #FFFFFF !important;
+  text-shadow: none !important;
+}
+
+.a11y-high-contrast button,
+.a11y-high-contrast a,
+.a11y-high-contrast input,
+.a11y-high-contrast select,
+.a11y-high-contrast textarea {
+  background-color: #000000 !important;
+  color: #FFFF00 !important;
+  border: 2px solid #FFFF00 !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.a11y-high-contrast button:hover,
+.a11y-high-contrast a:hover {
+  background-color: #FFFF00 !important;
+  color: #000000 !important;
+  border: 2px solid #FFFFFF !important;
+}
+
+.a11y-high-contrast .text-[#C5A36B],
+.a11y-high-contrast .text-[#F2EBE4] {
+  color: #FFFF00 !important;
+}
+
+.a11y-high-contrast .border-[#C5A36B],
+.a11y-high-contrast .border-white\/10 {
+  border-color: #FFFF00 !important;
+}
+
+/* Ensure keyboard focus rings are highly visible */
+*:focus-visible {
+  outline: 3px solid #FFFF00 !important;
+  outline-offset: 2px !important;
+}
+

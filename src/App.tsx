@@ -43,7 +43,8 @@ import {
   MicOff,
   UserCheck,
   Scale,
-  Brain
+  Brain,
+  Download
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Herb, DoshaAnswers, RecommendationResponse, SavedConsultation, UserProfile as UserProfileType } from "./types";
@@ -59,6 +60,9 @@ import AuthModal from "./components/AuthModal";
 import AyurBot from "./components/AyurBot";
 import ProjectVerificationModal from "./components/ProjectVerificationModal";
 import AcademicHub from "./components/AcademicHub";
+import { generateAyurvedicPDF } from "./lib/pdfGenerator";
+import AccessibilityWidget from "./components/AccessibilityWidget";
+import AccessibilityDashboard from "./components/AccessibilityDashboard";
 
 const isOwnerEmail = (email?: string) => {
   if (!email) return false;
@@ -183,6 +187,40 @@ export default function App() {
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResponse | null>(null);
   const [activeTab, setActiveTab] = useState<"Consult" | "Diseases" | "Library" | "SattvaHabits" | "WeightLoss" | "Profile" | "AyurBot" | "Academic">("Consult");
   const [showApplyToast, setShowApplyToast] = useState<string | null>(null);
+
+  // Universal Accessibility Options
+  const [fontSize, setFontSize] = useState<"normal" | "large" | "extra-large">(() => {
+    try {
+      const stored = localStorage.getItem("vedascan_font_size");
+      return (stored as "normal" | "large" | "extra-large") || "normal";
+    } catch {
+      return "normal";
+    }
+  });
+  const [highContrast, setHighContrast] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("vedascan_high_contrast") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [dyslexiaFont, setDyslexiaFont] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("vedascan_dyslexia_font") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("vedascan_font_size", fontSize);
+      localStorage.setItem("vedascan_high_contrast", String(highContrast));
+      localStorage.setItem("vedascan_dyslexia_font", String(dyslexiaFont));
+    } catch (e) {
+      console.warn("Could not save accessibility settings:", e);
+    }
+  }, [fontSize, highContrast, dyslexiaFont]);
   const [savedConsultations, setSavedConsultations] = useState<SavedConsultation[]>(() => {
     try {
       const stored = localStorage.getItem("vedascan_saved_consultations");
@@ -385,6 +423,20 @@ export default function App() {
         resultsEl.scrollIntoView({ behavior: "smooth" });
       }
     }, 100);
+  };
+
+  const handleDownloadPDF = () => {
+    if (!recommendationResult) return;
+    generateAyurvedicPDF(recommendationResult, {
+      name: currentUser?.name,
+      email: currentUser?.email,
+      age,
+      gender,
+      symptoms: selectedSymptoms,
+      severity,
+      duration,
+      customDescription
+    });
   };
 
   const handleDeleteSavedConsultation = (id: string, e: React.MouseEvent) => {
@@ -621,7 +673,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080A09] text-[#E0D8D0] font-sans flex flex-col relative overflow-x-hidden">
+    <div className={`min-h-screen bg-[#080A09] text-[#E0D8D0] font-sans flex flex-col relative overflow-x-hidden ${
+      fontSize === "large" ? "a11y-font-large" : fontSize === "extra-large" ? "a11y-font-extra-large" : ""
+    } ${highContrast ? "a11y-high-contrast" : ""} ${dyslexiaFont ? "a11y-dyslexia" : ""}`}>
       
       {/* Decorative Atmosphere Glow Background Elements */}
       <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] bg-[#2D3A25] rounded-full blur-[140px] opacity-40 pointer-events-none" />
@@ -807,6 +861,18 @@ export default function App() {
 
       {/* Main Content Layout */}
       <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 md:px-12 py-8 space-y-12">
+        {/* Dedicated Persistent Accessibility Dashboard */}
+        <AccessibilityDashboard
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          highContrast={highContrast}
+          setHighContrast={setHighContrast}
+          dyslexiaFont={dyslexiaFont}
+          setDyslexiaFont={setDyslexiaFont}
+          recommendationResult={recommendationResult}
+          onVoiceCapture={startVoiceCapture}
+        />
+
         {/* Intro Atmosphere Segment */}
         <div className="text-center md:text-left max-w-3xl py-4 space-y-4">
           {activeTab === "Consult" && (
@@ -1368,7 +1434,7 @@ export default function App() {
                   )}
 
                   {/* Header info bar */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8 border-b border-white/10 pb-6 relative z-10">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-white/10 pb-6 relative z-10">
                     <div className="space-y-1">
                       <h2 className="text-[10px] uppercase tracking-widest text-[#C5A36B] font-bold">
                         AI Vaidya Diagnostics Report
@@ -1377,11 +1443,22 @@ export default function App() {
                         Custom Balanced Therapy
                       </p>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <div className="px-3.5 py-1.5 bg-[#C5A36B] text-black text-[10px] font-bold rounded-lg tracking-widest uppercase">
-                        TRIDOSHA PROTOCOL
+                    <div className="flex flex-col items-start sm:items-end gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={handleDownloadPDF}
+                          className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 text-[#F2EBE4] hover:text-[#C5A36B] text-[10px] font-bold rounded-lg tracking-wider uppercase transition flex items-center gap-1.5 cursor-pointer shadow-sm hover:border-[#C5A36B]/40"
+                          title="Download personalized Ayurvedic protocol as a PDF document for offline reference"
+                          id="btn-download-pdf-report"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Download PDF</span>
+                        </button>
+                        <div className="px-3.5 py-1.5 bg-[#C5A36B] text-black text-[10px] font-bold rounded-lg tracking-widest uppercase select-none">
+                          TRIDOSHA PROTOCOL
+                        </div>
                       </div>
-                      <span className="text-[10px] text-white/40 mt-1">Authentic Traditional Safe Recommendation</span>
+                      <span className="text-[10px] text-white/40">Authentic Traditional Safe Recommendation</span>
                     </div>
                   </div>
 
@@ -1897,6 +1974,18 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* Floating Universal Accessibility Hub */}
+      <AccessibilityWidget
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+        highContrast={highContrast}
+        setHighContrast={setHighContrast}
+        dyslexiaFont={dyslexiaFont}
+        setDyslexiaFont={setDyslexiaFont}
+        recommendationResult={recommendationResult}
+        onVoiceCapture={startVoiceCapture}
+      />
     </div>
   );
 }

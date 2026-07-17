@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { UserProfile as ProfileType } from "../types";
+import { googleSignIn } from "../lib/firebase";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -42,11 +43,11 @@ export default function AuthModal({
   const [verificationCode, setVerificationCode] = useState("");
   const [sentCode, setSentCode] = useState("");
   const [isResending, setIsResending] = useState(false);
-  const [showSmtpConsole, setShowSmtpConsole] = useState(true);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Feedback states
   const [error, setError] = useState("");
-  const [infoMessage, setInfoMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState<string | React.ReactNode>("");
   const [success, setSuccess] = useState(false);
   const [shake, setShake] = useState(false);
 
@@ -58,6 +59,7 @@ export default function AuthModal({
       setVerificationCode("");
       setSentCode("");
       setIsResending(false);
+      setIsSendingEmail(false);
       setError("");
       setInfoMessage("");
       setSuccess(false);
@@ -69,6 +71,99 @@ export default function AuthModal({
   const generateVerificationCode = () => {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     return randomNum.toString();
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setInfoMessage("");
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        const { user, accessToken } = result;
+        
+        // Notify server of the Gmail token so the server can use it to send emails automatically
+        try {
+          await fetch("/api/save-admin-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: accessToken })
+          });
+        } catch (tokenErr) {
+          console.error("Failed to register Gmail token on server:", tokenErr);
+        }
+
+        const storedUsers = JSON.parse(localStorage.getItem("vedascan_user_accounts") || "[]");
+        let matched = storedUsers.find((u: any) => u.email.toLowerCase() === user.email?.toLowerCase());
+
+        if (!matched) {
+          const newProfile: ProfileType = {
+            id: `user_${Date.now()}`,
+            name: user.displayName || "Google Seeker",
+            email: user.email!,
+            dosha: "Vata",
+            createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+            notes: [],
+            weightLogs: [
+              { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 80.0 }
+            ],
+            completedWeightLossDays: [],
+            savedConsultations: [],
+            emailVerified: true
+          };
+
+          matched = {
+            id: newProfile.id,
+            email: user.email!,
+            password: `google_auth_${Date.now()}`,
+            profile: newProfile
+          };
+
+          storedUsers.push(matched);
+          localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
+        }
+
+        setSuccess(true);
+        setTimeout(() => {
+          onLoginSuccess(matched.profile);
+          onClose();
+        }, 1200);
+      }
+    } catch (err: any) {
+      console.error("Google login error:", err);
+      let errMsg = err?.message || "Failed to authenticate with Google. Please try again.";
+      if (errMsg.includes("auth/internal-error") || errMsg.includes("network-request-failed") || errMsg.includes("popup")) {
+        errMsg = "auth-blocked-iframe";
+      }
+      setError(errMsg);
+    }
+  };
+
+  const triggerEmailDispatch = async (targetEmail: string, code: string, recipientName?: string) => {
+    setIsSendingEmail(true);
+    setInfoMessage("Namaste! Generating secure verification credentials...");
+    try {
+      const response = await fetch("/api/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail, code, name: recipientName || name })
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (data.isSandboxFallback) {
+          setVerificationCode(data.code);
+          setInfoMessage(`Namaste! Sandbox mode active - code auto-filled.`);
+        } else {
+          setInfoMessage(`Namaste! A secure activation code has been sent to ${targetEmail}.`);
+        }
+      } else {
+        setError(data.error || "Failed to dispatch verification email.");
+      }
+    } catch (err) {
+      console.error("Email dispatch request error:", err);
+      setError("Failed to connect to the authentication server. Please verify your connection.");
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -119,11 +214,37 @@ export default function AuthModal({
         return;
       }
 
-      // Generate verification code and enter verification flow
-      const code = generateVerificationCode();
-      setSentCode(code);
-      setIsVerifying(true);
-      setVerificationCode("");
+            // Bypass verification and register directly
+      const newProfile = {
+        id: `user_${Date.now()}`,
+        name,
+        email,
+        dosha,
+        createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+        notes: [],
+        weightLogs: [
+          { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 75.0 }
+        ],
+        completedWeightLossDays: [],
+        savedConsultations: [],
+        emailVerified: true
+      };
+
+      const newUserAccount = {
+        id: newProfile.id,
+        email,
+        password,
+        profile: newProfile
+      };
+
+      storedUsers.push(newUserAccount);
+      localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
+      
+      setSuccess(true);
+      setTimeout(() => {
+        onLoginSuccess(newProfile);
+        onClose();
+      }, 1200);
     }
   };
 
@@ -180,13 +301,10 @@ export default function AuthModal({
     setInfoMessage("");
     setError("");
     
-    setTimeout(() => {
-      const code = generateVerificationCode();
-      setSentCode(code);
-      setVerificationCode("");
-      setIsResending(false);
-      setInfoMessage("A fresh verification code has been dispatched to your email address!");
-    }, 800);
+    const code = generateVerificationCode();
+    setSentCode(code);
+    setIsResending(false);
+    triggerEmailDispatch(email, code, name);
   };
 
   const triggerShake = () => {
@@ -344,25 +462,6 @@ export default function AuthModal({
                   Change registration details
                 </button>
               </div>
-
-              {/* Live SMTP Simulator Console */}
-              {showSmtpConsole && (
-                <div className="bg-black/60 border border-[#C5A36B]/20 rounded-2xl p-4 mt-4 space-y-2">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-[9px] uppercase tracking-widest font-mono text-[#C5A36B] font-bold">VedaScan SMTP Sandbox</span>
-                    </div>
-                    <span className="text-[8px] font-mono text-white/30">Local Dev Server</span>
-                  </div>
-                  <div className="font-mono text-[10px] text-white/70 space-y-1">
-                    <p><span className="text-white/40">From:</span> secure-auth@vedascan.ai.studio</p>
-                    <p><span className="text-white/40">To:</span> {email}</p>
-                    <p><span className="text-white/40">Subject:</span> Complete registration with code: <strong className="text-[#C5A36B] select-all font-bold">{sentCode}</strong></p>
-                    <p className="text-white/40 border-t border-white/5 pt-1.5 mt-1 text-[9px] italic">Note: In a live environment, this secure token is dispatched via email. Use the code above for instantaneous sandbox verification.</p>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <div className="space-y-5">
@@ -385,9 +484,25 @@ export default function AuthModal({
                   <motion.div 
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-red-500/15 border border-red-500/30 text-red-200 text-xs rounded-xl p-3 text-center"
+                    className="bg-red-500/15 border border-red-500/30 text-red-200 text-xs rounded-xl p-3 text-center space-y-2.5"
                   >
-                    {error}
+                    {error === "auth-blocked-iframe" ? (
+                      <div className="space-y-2 text-left">
+                        <p>⚠️ <strong>Sign-In Blocked by Browser</strong></p>
+                        <p className="text-[10px] leading-relaxed opacity-80">
+                          Google Sign-In is restricted inside preview iframes. Open the app in a new tab to securely sign in.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => window.open(window.location.href, "_blank")}
+                          className="w-full py-2 bg-[#C5A36B]/20 text-[#C5A36B] hover:bg-[#C5A36B]/30 border border-[#C5A36B]/40 rounded-lg text-[10px] uppercase font-bold tracking-wider mt-2 transition cursor-pointer"
+                        >
+                          Open App in New Tab
+                        </button>
+                      </div>
+                    ) : (
+                      <p>{error}</p>
+                    )}
                   </motion.div>
                 )}
 

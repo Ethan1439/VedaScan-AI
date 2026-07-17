@@ -55,6 +55,7 @@ import {
   BookOpen
 } from "lucide-react";
 import { UserProfile as ProfileType, HealthNote, SavedConsultation } from "../types";
+import { googleSignIn, getAccessToken, setAccessToken } from "../lib/firebase";
 
 const isOwnerEmail = (email?: string) => {
   if (!email) return false;
@@ -83,14 +84,13 @@ export default function UserProfile({
   const [name, setName] = useState("");
   const [dosha, setDosha] = useState("Vata-Pitta");
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState<string | React.ReactNode>("");
 
   // Verification states
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [sentCode, setSentCode] = useState("");
   const [isResending, setIsResending] = useState(false);
-  const [showSmtpConsole, setShowSmtpConsole] = useState(true);
 
   // Health Note state
   const [noteTitle, setNoteTitle] = useState("");
@@ -106,6 +106,12 @@ export default function UserProfile({
 
   // WRO Engineering Journal State
   const [activeJournalTab, setActiveJournalTab] = useState<"architecture" | "activities" | "ai" | "frontend">("architecture");
+
+  // Google Gmail Integration State
+  const [testRecipient, setTestRecipient] = useState("");
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState("");
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
 
 
 
@@ -198,9 +204,179 @@ export default function UserProfile({
     }
   }, []);
 
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const triggerEmailDispatch = async (targetEmail: string, code: string, recipientName?: string) => {
+    setIsSendingEmail(true);
+    setSuccessMsg("Namaste! Generating secure verification credentials...");
+    try {
+      const response = await fetch("/api/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail, code, name: recipientName || name })
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (data.isSandboxFallback) {
+          setVerificationCode(data.code);
+          setSuccessMsg(`Namaste! Sandbox mode active - code auto-filled.`);
+        } else {
+          setSuccessMsg(`Namaste! A secure activation code has been sent to ${targetEmail}.`);
+        }
+      } else {
+        setError(data.error || "Failed to dispatch verification email.");
+      }
+    } catch (err) {
+      console.error("Email dispatch request error:", err);
+      setError("Failed to connect to the authentication server. Please verify your connection.");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  const handleAuthorizeGmail = async () => {
+    setIsAuthorizing(true);
+    setError("");
+    setSuccessMsg("");
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        const { accessToken } = result;
+        
+        // Register token with backend server
+        const response = await fetch("/api/save-admin-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: accessToken })
+        });
+        const data = await response.json();
+        if (data.success) {
+          setSuccessMsg("Gmail integration authorized successfully!");
+        } else {
+          setError(data.error || "Authorized with Google, but failed to synchronize with backend.");
+        }
+      }
+    } catch (err: any) {
+      console.error("Gmail authorization error:", err);
+      let errMsg = err?.message || "Failed to authorize Gmail account.";
+      if (errMsg.includes("auth/internal-error") || errMsg.includes("network-request-failed") || errMsg.includes("popup")) {
+        errMsg = "auth-blocked-iframe";
+      }
+      setError(errMsg);
+    } finally {
+      setIsAuthorizing(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!testRecipient.trim()) {
+      setTestResult("Please specify a recipient email.");
+      return;
+    }
+    setIsSendingTest(true);
+    setTestResult("");
+    try {
+      const token = getAccessToken();
+      const response = await fetch("/api/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: testRecipient.trim(),
+          code: "108108",
+          name: "VedaScan Tester",
+          googleAccessToken: token
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setTestResult("Success! Test email sent successfully.");
+      } else {
+        setTestResult(`Failed: ${data.error || "Verification delivery failed."}`);
+      }
+    } catch (err: any) {
+      console.error("Test email send error:", err);
+      setTestResult(`Error: ${err.message || "Failed to connect to the API."}`);
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
+
+  const handleRevokeGmail = () => {
+    fetch("/api/save-admin-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: null })
+    }).catch(console.error);
+
+    setAccessToken(null);
+    setSuccessMsg("Gmail integration disconnected.");
+  };
+
   const generateVerificationCode = () => {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     return randomNum.toString();
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setSuccessMsg("");
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        const { user, accessToken } = result;
+
+        // Register the active Gmail token with the server
+        try {
+          await fetch("/api/save-admin-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: accessToken })
+          });
+        } catch (tokenErr) {
+          console.error("Failed to register Gmail token on server:", tokenErr);
+        }
+
+        const storedUsers = JSON.parse(localStorage.getItem("vedascan_user_accounts") || "[]");
+        let matched = storedUsers.find((u: any) => u.email.toLowerCase() === user.email?.toLowerCase());
+
+        if (!matched) {
+          const newProfile: ProfileType = {
+            id: `user_${Date.now()}`,
+            name: user.displayName || "Google Seeker",
+            email: user.email!,
+            dosha: "Vata",
+            createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+            notes: [],
+            weightLogs: [
+              { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 80.0 }
+            ],
+            completedWeightLossDays: [],
+            savedConsultations: [],
+            emailVerified: true
+          };
+
+          matched = {
+            id: newProfile.id,
+            email: user.email!,
+            password: `google_auth_${Date.now()}`,
+            profile: newProfile
+          };
+
+          storedUsers.push(matched);
+          localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
+        }
+
+        onLogin(matched.profile);
+        setSuccessMsg("Logged in successfully with Google!");
+      }
+    } catch (err: any) {
+      console.error("Google authentication failed:", err);
+      let errMsg = err?.message || "Failed to authenticate with Google. Please try again.";
+      if (errMsg.includes("auth/internal-error") || errMsg.includes("network-request-failed") || errMsg.includes("popup")) {
+        errMsg = "auth-blocked-iframe";
+      }
+      setError(errMsg);
+    }
   };
 
   const handleAuth = (e: React.FormEvent) => {
@@ -236,11 +412,34 @@ export default function UserProfile({
         return;
       }
 
-      // Generate verification code and enter verification flow
-      const code = generateVerificationCode();
-      setSentCode(code);
-      setIsVerifying(true);
-      setVerificationCode("");
+            // Bypass verification and register directly
+      const newProfile = {
+        id: `user_${Date.now()}`,
+        name,
+        email,
+        dosha: "Vata",
+        createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+        notes: [],
+        weightLogs: [
+          { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 75.0 }
+        ],
+        completedWeightLossDays: [],
+        savedConsultations: [],
+        emailVerified: true
+      };
+
+      const newUserAccount = {
+        id: newProfile.id,
+        email,
+        password,
+        profile: newProfile
+      };
+
+      storedUsers.push(newUserAccount);
+      localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
+      
+      onLogin(newProfile);
+      setSuccessMsg("Account created successfully!");
     }
   };
 
@@ -291,13 +490,11 @@ export default function UserProfile({
     setError("");
     setSuccessMsg("");
     
-    setTimeout(() => {
-      const code = generateVerificationCode();
-      setSentCode(code);
-      setVerificationCode("");
-      setIsResending(false);
-      setSuccessMsg("A fresh verification code has been dispatched to your email address!");
-    }, 800);
+    const code = generateVerificationCode();
+    setSentCode(code);
+    
+    setIsResending(false);
+    triggerEmailDispatch(email, code, name);
   };
 
   // Google Search Console dynamic ownership tester
@@ -490,24 +687,6 @@ export default function UserProfile({
                   Change registration details
                 </button>
               </div>
-
-              {showSmtpConsole && (
-                <div className="bg-black/60 border border-[#C5A36B]/20 rounded-2xl p-4 mt-4 space-y-2 text-left">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-[9px] uppercase tracking-widest font-mono text-[#C5A36B] font-bold">VedaScan SMTP Sandbox</span>
-                    </div>
-                    <span className="text-[8px] font-mono text-white/30">Local Dev Server</span>
-                  </div>
-                  <div className="font-mono text-[10px] text-white/70 space-y-1">
-                    <p><span className="text-white/40">From:</span> secure-auth@vedascan.ai.studio</p>
-                    <p><span className="text-white/40">To:</span> {email}</p>
-                    <p><span className="text-white/40">Subject:</span> Complete registration with code: <strong className="text-[#C5A36B] select-all font-bold">{sentCode}</strong></p>
-                    <p className="text-white/40 border-t border-white/5 pt-1.5 mt-1 text-[9px] italic">Note: In a live environment, this secure token is dispatched via email. Use the code above for instantaneous sandbox verification.</p>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <>
@@ -523,10 +702,29 @@ export default function UserProfile({
                 </p>
               </div>
 
+              {/* Google Sign-In Method */}
+              
+
               <form onSubmit={handleAuth} className="space-y-4">
                 {error && (
                   <div className="bg-red-500/15 border border-red-500/30 text-red-200 text-xs rounded-xl p-3 text-center">
-                    {error}
+                    {error === "auth-blocked-iframe" ? (
+                      <div className="space-y-2 text-left">
+                        <p>⚠️ <strong>Sign-In Blocked by Browser</strong></p>
+                        <p className="text-[10px] leading-relaxed opacity-80">
+                          Google Sign-In is restricted inside preview iframes. Open the app in a new tab to securely sign in.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => window.open(window.location.href, "_blank")}
+                          className="w-full py-2 bg-[#C5A36B]/20 text-[#C5A36B] hover:bg-[#C5A36B]/30 border border-[#C5A36B]/40 rounded-lg text-[10px] uppercase font-bold tracking-wider mt-2 transition cursor-pointer"
+                        >
+                          Open App in New Tab
+                        </button>
+                      </div>
+                    ) : (
+                      <p>{error}</p>
+                    )}
                   </div>
                 )}
                 {successMsg && (
@@ -842,6 +1040,113 @@ export default function UserProfile({
                         </span>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Google Mail Integration (Gmail API) Control Center */}
+              <div className="p-6 rounded-[32px] bg-black/40 border border-[#C5A36B]/20 space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-white/5">
+                  <div className="flex items-center gap-2">
+                    <MailOpen className="w-4 h-4 text-[#C5A36B]" />
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-[#F2EBE4]">
+                      Google Mail Integration
+                    </span>
+                  </div>
+                  <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded border ${
+                    getAccessToken() 
+                      ? "bg-green-500/10 text-green-400 border-green-500/20" 
+                      : "bg-[#C5A36B]/15 text-[#C5A36B] border-[#C5A36B]/20"
+                  }`}>
+                    {getAccessToken() ? "Authorized" : "Inactive"}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-[#E0D8D0]/70 leading-relaxed">
+                  Authorize your Gmail account to enable real-time delivery of account activation codes and consulting reports with zero SMTP setup.
+                </p>
+
+                {/* Inline Gmail Card Errors/Notifications */}
+                {error && (
+                  <div className="bg-red-500/15 border border-red-500/30 text-red-200 text-[11px] rounded-xl p-3 text-center">
+                    {error === "auth-blocked-iframe" ? (
+                      <div className="space-y-2 text-left">
+                        <p>⚠️ <strong>Sign-In Blocked by Browser</strong></p>
+                        <p className="text-[10px] leading-relaxed opacity-80">
+                          Google Sign-In is restricted inside preview iframes. Open the app in a new tab to securely sign in.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => window.open(window.location.href, "_blank")}
+                          className="w-full py-2 bg-[#C5A36B]/20 text-[#C5A36B] hover:bg-[#C5A36B]/30 border border-[#C5A36B]/40 rounded-lg text-[10px] uppercase font-bold tracking-wider mt-2 transition cursor-pointer"
+                        >
+                          Open App in New Tab
+                        </button>
+                      </div>
+                    ) : (
+                      <p>{error}</p>
+                    )}
+                  </div>
+                )}
+                {successMsg && (
+                  <div className="bg-green-500/15 border border-green-500/30 text-green-200 text-[11px] rounded-xl p-3 text-center">
+                    {successMsg}
+                  </div>
+                )}
+
+                {getAccessToken() ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="flex items-center gap-2 p-2.5 bg-green-500/5 rounded-xl border border-green-500/10 text-[10px] text-green-200">
+                      <ShieldCheck className="w-4 h-4 text-green-400 flex-shrink-0" />
+                      <span>Authenticated via Google OAuth. Gmail dispatch is active!</span>
+                    </div>
+
+                    {/* Test Dispatch Form */}
+                    <div className="bg-white/[0.02] p-3 rounded-2xl border border-white/5 space-y-2">
+                      <span className="text-[9px] uppercase tracking-wider text-white/40 block font-semibold">Test Email Delivery</span>
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="Enter recipient email"
+                          value={testRecipient}
+                          onChange={(e) => setTestRecipient(e.target.value)}
+                          className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-[#F2EBE4] focus:outline-none focus:border-[#C5A36B]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSendTestEmail}
+                          disabled={isSendingTest}
+                          className="px-3 py-1.5 bg-[#C5A36B] text-black font-bold rounded-lg text-xs hover:bg-[#C5A36B]/80 transition disabled:opacity-50 flex items-center gap-1 cursor-pointer"
+                        >
+                          {isSendingTest ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Send"}
+                        </button>
+                      </div>
+                      {testResult && (
+                        <p className={`text-[10px] ${testResult.startsWith("Success") ? "text-green-400" : "text-red-400"}`}>
+                          {testResult}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRevokeGmail}
+                      className="w-full text-center text-[10px] text-red-400/70 hover:text-red-400 hover:underline cursor-pointer"
+                    >
+                      Disconnect Gmail Account
+                    </button>
+                  </div>
+                ) : (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAuthorizeGmail}
+                      disabled={isAuthorizing}
+                      className="w-full bg-[#C5A36B] hover:bg-[#C5A36B]/85 text-black font-semibold py-2.5 rounded-xl transition-all duration-300 text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
+                    >
+                      {isAuthorizing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                      <span>Authorize Gmail Sender</span>
+                    </button>
                   </div>
                 )}
               </div>
