@@ -36,7 +36,7 @@ interface AcademicHubProps {
   currentUser: any;
 }
 
-export default function AcademicHub({ onNavigateTab, currentUser }: AcademicHubProps) {
+export default function HowItWorks({ onNavigateTab, currentUser }: AcademicHubProps) {
   // Static list of website functions
   const websiteFunctions = [
     {
@@ -98,8 +98,30 @@ export default function AcademicHub({ onNavigateTab, currentUser }: AcademicHubP
   ];
 
 
-  return (
+    return (
     <div id="academic-section" className="space-y-8 animate-fade-in">
+      
+      {/* WRO & AI Backend Section */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-[32px] p-6 md:p-8 backdrop-blur-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full filter blur-3xl pointer-events-none" />
+        <div className="relative z-10 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[9px] uppercase tracking-widest font-mono text-blue-400 font-bold bg-blue-500/10 px-2.5 py-1 rounded-md border border-blue-500/20">
+              World Robot Olympiad (WRO) Standards
+            </span>
+            <span className="text-[9px] uppercase tracking-widest font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+              Functional AI Backend
+            </span>
+          </div>
+          <h2 className="text-2xl md:text-3xl font-serif text-[#F2EBE4] font-medium leading-tight">
+            Advanced Intelligence & WRO Compliance
+          </h2>
+          <p className="text-sm text-white/70 max-w-3xl leading-relaxed">
+            VedaScan AI leverages a sophisticated functional AI backend designed to process natural language symptom reports and accurately match them with thousands of classical Ayurvedic data points. This robust intelligence layer ensures seamless conversational interactions and diagnostic reliability. Developed entirely from scratch to meet and exceed <strong>World Robot Olympiad (WRO) standards</strong>, the architecture incorporates real-time health data parsing, a modular capability index, and an encapsulated secure processing environment to deliver high-performance, accurate wellness insights.
+          </p>
+        </div>
+      </div>
+
       
       {/* Dynamic Header Block */}
       <div className="bg-white/[0.03] border border-white/10 rounded-[32px] p-6 md:p-8 backdrop-blur-xl relative overflow-hidden">

@@ -59,7 +59,7 @@ import WeightLossPlan from "./components/WeightLossPlan";
 import AuthModal from "./components/AuthModal";
 import AyurBot from "./components/AyurBot";
 import ProjectVerificationModal from "./components/ProjectVerificationModal";
-import AcademicHub from "./components/AcademicHub";
+import HowItWorks from "./components/HowItWorks";
 import { generateAyurvedicPDF } from "./lib/pdfGenerator";
 import AccessibilityWidget from "./components/AccessibilityWidget";
 import AccessibilityDashboard from "./components/AccessibilityDashboard";
@@ -185,7 +185,7 @@ export default function App() {
   // Result state
   const [loading, setLoading] = useState(false);
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<"Consult" | "Diseases" | "Library" | "SattvaHabits" | "WeightLoss" | "Profile" | "AyurBot" | "Academic">("Consult");
+  const [activeTab, setActiveTab] = useState<"Consult" | "Diseases" | "Library" | "SattvaHabits" | "WeightLoss" | "Profile" | "AyurBot" | "HowItWorks">("Consult");
   const [showApplyToast, setShowApplyToast] = useState<string | null>(null);
 
   // Universal Accessibility Options
@@ -773,20 +773,20 @@ export default function App() {
             Ask AyurBot
           </button>
           <button
-            id="nav-academic-tab"
+            id="nav-how-it-works-tab"
             onClick={() => {
-              setActiveTab("Academic");
+              setActiveTab("HowItWorks");
               setTimeout(() => {
                 document.getElementById("academic-section")?.scrollIntoView({ behavior: "smooth" });
               }, 100);
             }}
-            className={`hover:text-[#C5A36B] transition cursor-pointer flex items-center gap-1.5 ${activeTab === "Academic" ? "text-[#C5A36B] font-bold" : "text-white/65"}`}
+            className={`hover:text-[#C5A36B] transition cursor-pointer flex items-center gap-1.5 ${activeTab === "HowItWorks" ? "text-[#C5A36B] font-bold" : "text-white/65"}`}
           >
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5A36B] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C5A36B]"></span>
             </span>
-            <span>📋 Functions</span>
+            <span>⚙️ How It Works</span>
           </button>
           <button
             id="nav-profile-tab"
@@ -973,16 +973,16 @@ export default function App() {
             </>
           )}
 
-          {activeTab === "Academic" && (
+          {activeTab === "HowItWorks" && (
             <>
               <span className="text-[10px] md:text-xs font-bold tracking-widest text-[#C5A36B] uppercase bg-[#C5A36B]/10 border border-[#C5A36B]/20 px-3 py-1.5 rounded-full inline-block">
-                Interactive Capability Index
+                System Architecture & Logic
               </span>
               <h1 className="text-4xl md:text-6xl font-serif leading-tight text-[#F2EBE4]">
-                Website <span className="text-[#C5A36B] italic font-semibold">Functions</span>.
+                How <span className="text-[#C5A36B] italic font-semibold">It Works</span>.
               </h1>
               <p className="text-sm md:text-base text-[#E0D8D0]/75 leading-relaxed max-w-2xl">
-                Explore the complete interactive index of VedaScan's modular capabilities, software algorithms, and system integrations.
+                Discover the technology and intelligence powering VedaScan AI, including our AI backend, diagnostic algorithms, and integration capabilities designed to meet World Robot Olympiad (WRO) standards.
               </p>
             </>
           )}
@@ -1824,10 +1824,10 @@ export default function App() {
           </div>
         )}
 
-        {/* Academic tab */}
-        {activeTab === "Academic" && (
-          <div id="academic-tab-section" className="w-full animate-fade-in">
-            <AcademicHub 
+        {/* How It Works tab */}
+        {activeTab === "HowItWorks" && (
+          <div id="how-it-works-section" className="w-full animate-fade-in">
+            <HowItWorks 
               currentUser={currentUser} 
               onNavigateTab={(targetTab: any) => {
                 setActiveTab(targetTab);
@@ -1874,6 +1874,7 @@ export default function App() {
               </button>
             )}
             <span>Authentic Herb Database</span>
+            <span>WRO Compliant AI Architecture</span>
             <span>Tridoshic Purifying</span>
             <span>Privacy Seal</span>
             <span className="text-white/70 font-semibold">© 2026 VEDASCAN AI INC</span>

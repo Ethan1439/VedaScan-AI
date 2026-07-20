@@ -214,37 +214,11 @@ export default function AuthModal({
         return;
       }
 
-            // Bypass verification and register directly
-      const newProfile = {
-        id: `user_${Date.now()}`,
-        name,
-        email,
-        dosha,
-        createdAt: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-        notes: [],
-        weightLogs: [
-          { id: `w_${Date.now()}`, date: new Date().toISOString().split("T")[0], weight: 75.0 }
-        ],
-        completedWeightLossDays: [],
-        savedConsultations: [],
-        emailVerified: true
-      };
-
-      const newUserAccount = {
-        id: newProfile.id,
-        email,
-        password,
-        profile: newProfile
-      };
-
-      storedUsers.push(newUserAccount);
-      localStorage.setItem("vedascan_user_accounts", JSON.stringify(storedUsers));
-      
-      setSuccess(true);
-      setTimeout(() => {
-        onLoginSuccess(newProfile);
-        onClose();
-      }, 1200);
+            // Generate verification code and enter verification flow
+      const code = generateVerificationCode();
+      setSentCode(code);
+      setIsVerifying(true);
+      triggerEmailDispatch(email, code, name);
     }
   };
 

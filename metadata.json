@@ -1,6 +1,8 @@
 {
-  "name": "Ayurvedic Remedy Recommendations",
-  "description": "An interactive, personalized system to receive custom Ayurvedic medicine, herb, and wellness recommendations based on your symptoms, health conditions, or Dosha profile.",
+  "name": "VedaScan AI",
+  "description": "VedaScan AI is an advanced, WRO-compliant Ayurvedic recommendation system featuring a simulated AI backend for natural language symptom processing and personalized wellness insights.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
